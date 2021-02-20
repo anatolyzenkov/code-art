@@ -94,7 +94,7 @@ const initScene = () => {
         }, 300);
     };
     // Setup states
-    targetPoint = new Point(links[0].x, links[0].y);
+    targetPoint = new Point(canvas2d.width/2, canvas2d.height/2);
 };
 
 const updateFrame = () => {
@@ -102,6 +102,8 @@ const updateFrame = () => {
     const geometryChanged = updateGeometry();
     if (geometryChanged) {
         renderFrame();
+    } else {
+        targetPoint = new Point(Math.random() * canvas2d.width, Math.random() * canvas2d.height/2);
     }
     stats.end();
     requestAnimationFrame(updateFrame);
@@ -109,12 +111,16 @@ const updateFrame = () => {
 
 const updateGeometry = () => {
     // Do not update if not changed
-    if (Math.abs(targetPoint.x - links[0].x) < 1 || Math.abs(targetPoint.y - links[0].y) < 1) false;
+    if (Math.abs(targetPoint.x - links[0].x) < 1 || Math.abs(targetPoint.y - links[0].y) < 1) return false;
     // Update links
     links.forEach((link, i) => {
         if (i === 0) {
-            link.x += (targetPoint.x - link.x) / 15;
-            link.y += (targetPoint.y - link.y) / 15;
+            const dx = (targetPoint.x - link.x); 
+            const dy = (targetPoint.y - link.y);
+            const xy = Math.sqrt(dx * dx + dy * dy);
+            const d = Math.min(300, xy)/xy;
+            link.x += d * dx / 15;
+            link.y += d * dy / 15;
             link.a = 0;
         } else {
             const prev = links[i - 1];
