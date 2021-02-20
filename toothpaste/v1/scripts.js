@@ -5,7 +5,6 @@ let ctx;
 let targetPoint;
 const DEBUG = isLocalHost();
 let stats;
-console.log(isMobileDevice());
 
 // Geometry parameters
 const s = Math.max(getViewport()[0], getViewport()[1]) / 1200;
@@ -21,6 +20,8 @@ const links = [];
 const points = [];
 const tris = [];
 const tris_to_draw = [];
+const max_speed = 400 * s;
+const speed_dump = 8 * s;
 
 // Paint parameters
 const gradient_stops = [];
@@ -118,9 +119,9 @@ const updateGeometry = () => {
             const dx = (targetPoint.x - link.x); 
             const dy = (targetPoint.y - link.y);
             const xy = Math.sqrt(dx * dx + dy * dy);
-            const d = Math.min(300, xy)/xy;
-            link.x += d * dx / 15;
-            link.y += d * dy / 15;
+            const d = Math.min(max_speed, xy)/xy;
+            link.x += d * dx / speed_dump;
+            link.y += d * dy / speed_dump;
             link.a = 0;
         } else {
             const prev = links[i - 1];
