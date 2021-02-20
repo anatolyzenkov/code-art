@@ -3,4 +3,19 @@ html {
   padding: 0;
   margin: 0;
   position: fixed;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+#body-wrapper {
+  padding: 30px;
+}
+#body-wrapper .project-card {
+  width: 100%;
+  max-width: 600px;
+}
+#body-wrapper .project-card a {
+  display: block;
+}
+#body-wrapper .project-card img {
+  width: 100%;
+  display: block;
 }
