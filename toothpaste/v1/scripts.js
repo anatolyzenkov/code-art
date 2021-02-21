@@ -7,21 +7,19 @@ const DEBUG = isLocalHost();
 let stats;
 
 // Geometry parameters
-const s = Math.max(getViewport()[0], getViewport()[1]) / 1200;
+const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
 const length_factor = isMobileDevice() ? 4000 : 6000;
-const length = length_factor * resolution * s;
-const width = 300 * resolution * s;
+const length = length_factor * resolution * sizeFactor;
+const width = 300 * resolution * sizeFactor;
 const halfWidth = width/2;
 const distance_factor = isMobileDevice() ? 26 : 20;
-const distance = distance_factor * resolution * s;
+const distance = distance_factor * resolution * sizeFactor;
 const limit = distance / width * 2;
 const linksCount = length / distance;
 const links = [];
 const points = [];
 const tris = [];
 const tris_to_draw = [];
-const max_speed = 400 * s;
-const speed_dump = 8 * s;
 
 // Paint parameters
 const gradient_stops = [];
@@ -79,10 +77,12 @@ const initScene = () => {
         targetPoint.x = touch.pageX * 2;
         targetPoint.y = touch.pageY * 2;
         e.preventDefault();
+        target.active = false;
     };
     document.onmousemove = (e) => {
         targetPoint.x = e.pageX * 2;
         targetPoint.y = e.pageY * 2;
+        target.active = false;
     };
     let timeoutID = -1;
     window.onresize = () => {
@@ -100,29 +100,60 @@ const initScene = () => {
 
 const updateFrame = () => {
     stats.begin();
+    updateTarget();
     const geometryChanged = updateGeometry();
     if (geometryChanged) {
         renderFrame();
     } else {
-        targetPoint = new Point(Math.random() * canvas2d.width, Math.random() * canvas2d.height/2);
+        target.active = true;
     }
     stats.end();
     requestAnimationFrame(updateFrame);
 };
 
+target = {
+    a0: Math.random() * PI2,
+    a1: Math.random() * PI2,
+    a2: Math.random() * PI2,
+    a3: Math.random() * PI2,
+    a4: Math.random() * PI2,
+    active: true,
+}
+const updateTarget = () => {
+    if (!target.active) return;
+    // If no user interactions
+    // target moves chaotic on the screen
+    const m = 0.5;
+    target.a2 += m * 0.01;
+    target.a3 += m * 0.02;
+    target.a4 += m * 0.04;
+    target.a0 += m * 0.07 * Math.cos(target.a2) * Math.sin(target.a3);
+    target.a1 += m * 0.03;
+    let r = Math.max(canvas2d.width, canvas2d.height)/4;
+    r = r + r * 2 / 3 * Math.cos(target.a1) * Math.sin(target.a4);
+    targetPoint.x = canvas2d.width/2 + r * Math.cos(target.a0);
+    targetPoint.y = canvas2d.height/2 + r * Math.sin(target.a0);
+}
+
 const updateGeometry = () => {
     // Do not update if not changed
-    if (Math.abs(targetPoint.x - links[0].x) < 1 || Math.abs(targetPoint.y - links[0].y) < 1) return false;
+    if (Math.abs(targetPoint.x - links[0].x) < 1 && Math.abs(targetPoint.y - links[0].y) < 1) return false;
     // Update links
     links.forEach((link, i) => {
         if (i === 0) {
-            const dx = (targetPoint.x - link.x); 
+            const max_speed = 300 * sizeFactor;
+            const speed_dump = 10 * sizeFactor;
+            
+            const dx = (targetPoint.x - link.x);
             const dy = (targetPoint.y - link.y);
-            const xy = Math.sqrt(dx * dx + dy * dy);
-            const d = Math.min(max_speed, xy)/xy;
-            link.x += d * dx / speed_dump;
-            link.y += d * dy / speed_dump;
-            link.a = 0;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            const k = Math.min(max_speed, d)/d;
+            const ta = Math.atan2(dy, dx);
+            const da = deltaAngle(link.a, ta);
+            
+            link.a = ta - da * 0.9;
+            link.x += k * d * Math.cos(link.a) / speed_dump;
+            link.y += k * d * Math.sin(link.a) / speed_dump;
         } else {
             const prev = links[i - 1];
             const a = Math.atan2(prev.y - link.y, prev.x - link.x);
@@ -232,6 +263,15 @@ const renderFrame = () => {
         ctx.fill();
         ctx.stroke();
     });
+
+    //Draw target
+    /*
+    ctx.fillStyle = '#000000'
+    ctx.beginPath();
+    ctx.arc(targetPoint.x, targetPoint.y, 10, 0, 2 * Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    */
 };
 
 class Point {
