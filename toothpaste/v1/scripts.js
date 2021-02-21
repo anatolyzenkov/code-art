@@ -100,12 +100,10 @@ const initScene = () => {
 
 const updateFrame = () => {
     stats.begin();
-    updateTarget();
+    if (target.active) updateTarget();
     const geometryChanged = updateGeometry();
     if (geometryChanged) {
         renderFrame();
-    } else {
-        target.active = true;
     }
     stats.end();
     requestAnimationFrame(updateFrame);
@@ -117,41 +115,43 @@ target = {
     a2: Math.random() * PI2,
     a3: Math.random() * PI2,
     a4: Math.random() * PI2,
+    a5: Math.random() * PI2,
     active: true,
 }
 const updateTarget = () => {
     if (!target.active) return;
-    // If no user interactions
+    // Until no user interactions
     // target moves chaotic on the screen
-    const m = 0.5;
-    target.a2 += m * 0.01;
-    target.a3 += m * 0.02;
+    const m = 0.3;
+    target.a1 += m * 0.012;
+    target.a2 += m * 0.02;
+    target.a3 += m * 0.03;
     target.a4 += m * 0.04;
+    target.a5 += m * 0.1;
     target.a0 += m * 0.07 * Math.cos(target.a2) * Math.sin(target.a3);
-    target.a1 += m * 0.03;
     let r = Math.max(canvas2d.width, canvas2d.height)/4;
-    r = r + r * 2 / 3 * Math.cos(target.a1) * Math.sin(target.a4);
+    r = r + r * 2 / 3 * Math.cos(target.a1) * Math.sin(target.a4) - r * 2 / 3 * Math.sin(target.a5);
     targetPoint.x = canvas2d.width/2 + r * Math.cos(target.a0);
     targetPoint.y = canvas2d.height/2 + r * Math.sin(target.a0);
 }
 
 const updateGeometry = () => {
     // Do not update if not changed
-    if (Math.abs(targetPoint.x - links[0].x) < 1 && Math.abs(targetPoint.y - links[0].y) < 1) return false;
+    const dx = (targetPoint.x - links[0].x);
+    const dy = (targetPoint.y - links[0].y);
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
     // Update links
     links.forEach((link, i) => {
         if (i === 0) {
+            const d = Math.sqrt(dx * dx + dy * dy);
             const max_speed = 300 * sizeFactor;
             const speed_dump = 10 * sizeFactor;
             
-            const dx = (targetPoint.x - link.x);
-            const dy = (targetPoint.y - link.y);
-            const d = Math.sqrt(dx * dx + dy * dy);
             const k = Math.min(max_speed, d)/d;
             const ta = Math.atan2(dy, dx);
             const da = deltaAngle(link.a, ta);
             
-            link.a = ta - da * 0.9;
+            link.a = ta - da * 0.8;
             link.x += k * d * Math.cos(link.a) / speed_dump;
             link.y += k * d * Math.sin(link.a) / speed_dump;
         } else {
@@ -247,7 +247,7 @@ const renderFrame = () => {
         ctx.fill();
     });
     */
-
+    // /*
     tris_to_draw.forEach((tri, i) => {
         ctx.beginPath();
         ctx.fillStyle = tri.gradient;
@@ -263,7 +263,7 @@ const renderFrame = () => {
         ctx.fill();
         ctx.stroke();
     });
-
+    // */
     //Draw target
     /*
     ctx.fillStyle = '#000000'
