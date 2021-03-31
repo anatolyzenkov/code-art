@@ -1,9 +1,31 @@
-body,
-html {
+@font-face {
+  font-family: 'NeueMachina';
+  src: url('/m/font/NeueMachina-Ultrabold.eot');
+  src: url('/m/font/NeueMachina-Ultrabold.eot?#iefix') format('embedded-opentype'),
+      url('/m/font/NeueMachina-Ultrabold.woff2') format('woff2'),
+      url('/m/font/NeueMachina-Ultrabold.woff') format('woff'),
+      url('/m/font/NeueMachina-Ultrabold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'NeueMachina';
+  src: url('/m/font/NeueMachina-Regular.eot');
+  src: url('/m/font/NeueMachina-Regular.eot?#iefix') format('embedded-opentype'),
+      url('/m/font/NeueMachina-Regular.woff2') format('woff2'),
+      url('/m/font/NeueMachina-Regular.woff') format('woff'),
+      url('/m/font/NeueMachina-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+body, html, h1, h2, h3, h4, h5, p, li, ol {
   padding: 0;
   margin: 0;
+}
+body,
+html {
   position: fixed;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'NeueMachina', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 #body-wrapper {
   padding: 30px;
@@ -18,4 +40,189 @@ html {
 #body-wrapper .project-card img {
   width: 100%;
   display: block;
+}
+#info-card {
+  background-color: white;
+  position: fixed;
+  top: 0; bottom: 0; left: 100%; right: 0;
+  transition: all 0.3s ease-in-out 0.6s;
+}
+#info-card.visible {
+  left: 0;
+  transition: all 0.3s ease-in-out 0.0s;
+}
+#info-card .navbar {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s ease-in 0.4s;
+}
+#info-card.visible .navbar {
+  opacity: 1;
+  transform: initial;
+  transition: all 0.3s ease-out 0.3s;
+}
+#info-card .wrapper {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s ease-in 0.2s;
+}
+#info-card.visible .wrapper {
+  transform: initial;
+  opacity: 1;
+  transition: all 0.3s ease-out 0.5s;
+}
+#info-card .external-links {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s ease-in 0.0s;
+}
+#info-card.visible .external-links {
+  transform: initial;
+  opacity: 1;
+  transition: all 0.3s ease-out 0.7s;
+}
+#info-card a {
+  color: inherit;
+}
+#info-card .navbar {
+  padding: 16px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+#info-card .path {
+  flex-grow: 2;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #808080;
+}
+#info-card .path a {
+  text-decoration: none;
+}
+#info-card .userpic {
+  width: 48px; height: 48px; display: block;
+}
+#nav-button {
+  position: fixed;
+  cursor: pointer;
+  top: 16px; right: 16px;
+  width: 48px; height: 48px;
+}
+#nav-button .nav-button-wrapper {
+  margin: 10px;
+  width: 28px; height: 28px;
+  position: relative;
+  overflow: hidden;
+}
+#nav-button .nav-button-wrapper .line {
+  width: 28px;
+  height: 2px;
+  background-color: black;
+  transform-origin: center;
+  position: absolute;
+}
+#nav-button .nav-button-wrapper .line0 {
+  top: 0; left: 0;
+  transition: all .2s ease-out 0.5s;
+}
+#nav-button .nav-button-wrapper .line1 {
+  top: 13px; left: 0;
+  transition: all .2s ease-out 0.7s;
+}
+#nav-button .nav-button-wrapper .line2 {
+  top: 26px; left: 0;
+  transition: all .2s ease-out 0.9s;
+}
+#nav-button.toggle .nav-button-wrapper .line0 {
+  top: 0; left: -28px;
+  transition: all .3s ease-in 0.0s;
+}
+#nav-button.toggle .nav-button-wrapper .line1 {
+  top: 13px; left: 28px;
+  transition: all .3s ease-in 0.2s;
+}
+#nav-button.toggle .nav-button-wrapper .line2 {
+  top: 26px; left: -28px;
+  transition: all .3s ease-in 0.4s;
+}
+
+#nav-button.toggle .nav-button-wrapper .line3 {
+  top: 13px; left: -5px; width: 38px; transform: rotate(45deg);
+  transition: all .2s ease-out 0.3s;
+}
+#nav-button.toggle .nav-button-wrapper .line4 {
+  top: 13px; left: -5px; width: 38px; transform: rotate(-45deg);
+  transition: all .2s ease-out 0.7s;
+}
+#nav-button .nav-button-wrapper .line3 {
+  top: -15px; left: -33px; width: 38px; transform: rotate(45deg);
+  transition: all .3s ease-in 0.0s;
+}
+#nav-button .nav-button-wrapper .line4 {
+  top: 41px; left: -33px; width: 38px; transform: rotate(-45deg);
+  transition: all .3s ease-in 0.3s;
+}
+#info-card .wrapper {
+  padding: 16px;
+}
+#info-card .wrapper h1 {
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 28px;
+}
+#info-card .wrapper p {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+#info-card .wrapper .external-links {
+  display: flex;
+  align-content: flex-start;
+  padding: 16px 0;
+}
+#info-card .wrapper .external-links .link {
+  cursor: pointer;
+  font-size: 14px;
+  padding: 12px 16px;
+  background-color: #F0F0F0;
+  margin-right: 8px;
+  display: block;
+  text-decoration: none;
+}
+@media only screen and (min-width: 375px) {
+  #info-card .wrapper h1 {
+    font-size: 36px;
+  }
+  #info-card .wrapper p {
+    font-size: 36px;
+  }
+}
+@media only screen and (min-width: 414px) {
+  #nav-button {
+    top: 24px; right: 24px;
+  }
+  #info-card .wrapper {
+    padding: 24px;
+  }
+  #info-card .navbar {
+    padding: 24px;
+  }
+}
+@media only screen and (min-width: 768px) {
+  #nav-button {
+    top: 40px; right: 40px;
+  }
+  #info-card {
+    width: 414px;
+    opacity: 0;
+    top: 16px; right: -414px; bottom: auto; left: auto;
+    transition: opacity 0.3s ease-in-out 0.6s, right 0.0s ease-in 0.9s;
+  }
+  #info-card.visible {
+    opacity: 1;
+    right: 16px; left: auto;
+    transition: opacity 0.3s ease-in-out 0.0s;
+  }
 }

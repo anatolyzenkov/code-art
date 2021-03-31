@@ -306,6 +306,8 @@ class Triangle {
     }
 }
 
-//All starts here
-initScene();
-updateFrame();
+//All starts here when DOM is ready
+document.addEventListener("DOMContentLoaded", (event) => {
+    initScene();
+    updateFrame();
+});

@@ -2,18 +2,18 @@
 
 <html lang="en">
   <head>
-    <title>Toothpaste v1 | Code Art</title>
-    <meta name="description" content="Toothpaste v1 is an interactive digital art micro-project by Anatoly Zenkov. Toothpaste v1 is a part of the Code Art project collection. Source code is available on GitHub." />
+    <title>Soft Ice | Code Art</title>
+    <meta name="description" content="Soft Ice is an interactive digital art micro-project by Anatoly Zenkov. Soft Ice is a part of the Code Art project collection. Source code is available on GitHub." />
     <meta name="author" content="Anatoly Zenkov" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Toothpaste v1" />
-    <meta property="og:description" content="Toothpaste v1 is an interactive digital art micro-project by Anatoly Zenkov. Toothpaste v1 is a part of the Code Art project collection. Source code is available on GitHub." />
-    <meta property="og:image" content="https://anatolyzenkov.com/code-art/toothpaste/v1/toothpaste-v1-og.jpg" />
-    <meta property="og:url" content="https://anatolyzenkov.com/code-art/toothpaste/v1/" />
+    <meta property="og:title" content="Soft Ice" />
+    <meta property="og:description" content="Soft Ice is an interactive digital art micro-project by Anatoly Zenkov. Soft Ice is a part of the Code Art project collection. Source code is available on GitHub." />
+    <meta property="og:image" content="https://anatolyzenkov.com/code-art/softice/v1/softice-og.jpg" />
+    <meta property="og:url" content="https://anatolyzenkov.com/code-art/softice/v1/" />
     <meta property="og:site_name" content="Anatoly Zenkov" />
-    <meta name="twitter:title" content="Toothpaste v1" />
-    <meta name="twitter:description" content="Toothpaste v1 is an interactive digital art micro-project by Anatoly Zenkov. Toothpaste v1 is a part of the Code Art project collection. Source code is available on GitHub." />
-    <meta name="twitter:image" content="https://anatolyzenkov.com/code-art/toothpaste/v1/toothpaste-v1-og.jpg" />
+    <meta name="twitter:title" content="Soft Ice" />
+    <meta name="twitter:description" content="Soft Ice is an interactive digital art micro-project by Anatoly Zenkov. Soft Ice is a part of the Code Art project collection. Source code is available on GitHub." />
+    <meta name="twitter:image" content="https://anatolyzenkov.com/code-art/softice/v1/softice-og.jpg" />
     <meta name="twitter:site" content="@anatolyzenkov" />
     <meta name="twitter:creator" content="@anatolyzenkov" />
     <!-- Icons mess -->
@@ -24,7 +24,7 @@
     <link rel="icon" href="/m/icons/favicon-128.png" sizes="128x128" />
     <link rel="icon" href="/m/icons/favicon-192.png" sizes="192x192" />
     <link rel="icon" href="/m/icons/favicon-228.png" sizes="228x228" />
-    <link rel="shortcut icon" sizes="196x196" href=“/m/icons/favicon-196.png" />
+    <link rel="shortcut icon" sizes="196x196" href="/m/icons/favicon-196.png" />
     <link rel="apple-touch-icon" href="/m/icons/favicon-120.png" sizes="120x120" />
     <link rel="apple-touch-icon" href="/m/icons/favicon-152.png" sizes="152x152" />
     <link rel="apple-touch-icon" href="/m/icons/favicon-180.png" sizes="180x180" />
@@ -41,19 +41,21 @@
     <link rel="stylesheet" href="../../css/styles.css" />
     <!-- FPS Meter -->
     <script src="https://mrdoob.github.io/stats.js/build/stats.min.js"></script>
-    <!-- Common function scripts -->
+    <!-- Common scripts -->
     <script src="../../js/scripts.js"></script>
-    <!--[if lt IE 9]>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
-    <![endif]-->
+    <script src="../../js/infocard.js"></script>
+    <!-- Project scripts -->
+    <script src="./scripts.js"></script>
     <style>
       canvas { display: block; }
       body { background-color: #f2c0c1; }
+      .hidden { width: 0; height: 0; overflow: hidden; }
     </style>
   </head>
 
   <body>
     <!-- Here we go -->
-    <script src="./scripts.js"></script>
+    <div id="info-card" class="hidden">
+    </div>
   </body>
 </html>
