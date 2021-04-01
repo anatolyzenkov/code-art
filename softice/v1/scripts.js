@@ -1,5 +1,5 @@
 // Screen parameters
-const resolution = Math.min(2, getDevicePixelRatio());
+const resolution = 1;//Math.min(2, getDevicePixelRatio());
 let canvas2d;
 let ctx;
 let targetPoint;
