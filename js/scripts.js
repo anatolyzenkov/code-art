@@ -66,15 +66,54 @@ const clamp = (n, min, max) => {
   return Math.min(max || 1, Math.max(min || 0, n));
 };
 
-const inputXY = (e) => {
-  if (
-    e.type == "touchstart" ||
-    e.type == "touchmove" ||
-    e.type == "touchend" ||
-    e.type == "touchcancel"
-  ) {
-    const touch = e.originalEvent.touches[0] || e.originalEvent.changedTouches[0];
-    return { x: touch.pageX, y: touch.pageY };
+class MotionSimulator {
+  x = 0;
+  y = 0;
+  _m = 0.3;
+  _automatic = true;
+  _a0 = Math.random() * PI2;
+  _a1 = Math.random() * PI2;
+  _a2 = Math.random() * PI2;
+  _a3 = Math.random() * PI2;
+  _a4 = Math.random() * PI2;
+  _a5 = Math.random() * PI2;
+  constructor() {
+    document.addEventListener('touchmove', (e) => {
+      const touch = e.touches[0] || e.changedTouches[0];
+      this.x = touch.pageX;
+      this.y = touch.pageY;
+      e.preventDefault();
+      manualSwitcher();
+    });
+    document.addEventListener('mousemove', (e) => {
+      this.x = e.pageX;
+      this.y = e.pageY;
+      manualSwitcher();
+    });
+    let timeoutID = -1;
+    const manualSwitcher = () => {
+      this._automatic = false;
+      clearTimeout(timeoutID);
+      timeoutID = setTimeout(() => {
+        this._automatic = true;
+      }, 5000);
+    }
+    this.update = () => {
+      if (this._automatic) {
+        const w = getViewport()[0];
+        const h = getViewport()[1];
+        this._a1 += this._m * 0.012;
+        this._a2 += this._m * 0.02;
+        this._a3 += this._m * 0.03;
+        this._a4 += this._m * 0.04;
+        this._a5 += this._m * 0.1;
+        this._a0 += this._m * 0.07 * Math.cos(this._a2) * Math.sin(this._a3);
+        let r = Math.max(w, h)/4;
+        r = r + r * 2 / 3 * Math.cos(this._a1) * Math.sin(this._a4) - r * 2 / 3 * Math.sin(this._a5);
+        this.x = w/2 + r * Math.cos(this._a0);
+        this.y = h/2 + r * Math.sin(this._a0);
+      }
+    }
   }
-  return { x: e.clientX, y: e.clientY };
-};
+}
+;

@@ -5,6 +5,7 @@ let ctx;
 let targetPoint;
 const DEBUG = isLocalHost();
 let stats;
+let motions;
 
 // Geometry parameters
 const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
@@ -30,6 +31,7 @@ const color1 = '#11545c';
 const initScene = () => {
     // Add Stats
     stats = new Stats();
+    motions = new MotionSimulator();
     if (DEBUG) {
         stats.showPanel(0);
         document.body.appendChild(stats.dom);
@@ -72,20 +74,8 @@ const initScene = () => {
         }
     }
     // Setup events
-    document.ontouchmove = (e) => {
-        const touch = e.touches[0] || e.changedTouches[0];
-        targetPoint.x = touch.pageX * 2;
-        targetPoint.y = touch.pageY * 2;
-        e.preventDefault();
-        target.active = false;
-    };
-    document.onmousemove = (e) => {
-        targetPoint.x = e.pageX * 2;
-        targetPoint.y = e.pageY * 2;
-        target.active = false;
-    };
     let timeoutID = -1;
-    window.onresize = () => {
+    window.addEventListener('resize', () => {
         clearTimeout(timeoutID);
         timeoutID = setTimeout(() => {
             canvas2d.width = getViewport()[0] * resolution;
@@ -93,14 +83,16 @@ const initScene = () => {
             canvas2d.style.width = getViewport()[0] + 'px';
             canvas2d.style.height = getViewport()[1] + 'px';
         }, 300);
-    };
+    });
     // Setup states
     targetPoint = new Point(canvas2d.width/2, canvas2d.height/2);
 };
 
 const updateFrame = () => {
     stats.begin();
-    if (target.active) updateTarget();
+    motions.update();
+    targetPoint.x = motions.x * resolution;
+    targetPoint.y = motions.y * resolution;
     const geometryChanged = updateGeometry();
     if (geometryChanged) {
         renderFrame();
@@ -108,32 +100,6 @@ const updateFrame = () => {
     stats.end();
     requestAnimationFrame(updateFrame);
 };
-
-target = {
-    a0: Math.random() * PI2,
-    a1: Math.random() * PI2,
-    a2: Math.random() * PI2,
-    a3: Math.random() * PI2,
-    a4: Math.random() * PI2,
-    a5: Math.random() * PI2,
-    active: true,
-}
-const updateTarget = () => {
-    if (!target.active) return;
-    // Until no user interactions
-    // target moves chaotic on the screen
-    const m = 0.3;
-    target.a1 += m * 0.012;
-    target.a2 += m * 0.02;
-    target.a3 += m * 0.03;
-    target.a4 += m * 0.04;
-    target.a5 += m * 0.1;
-    target.a0 += m * 0.07 * Math.cos(target.a2) * Math.sin(target.a3);
-    let r = Math.max(canvas2d.width, canvas2d.height)/4;
-    r = r + r * 2 / 3 * Math.cos(target.a1) * Math.sin(target.a4) - r * 2 / 3 * Math.sin(target.a5);
-    targetPoint.x = canvas2d.width/2 + r * Math.cos(target.a0);
-    targetPoint.y = canvas2d.height/2 + r * Math.sin(target.a0);
-}
 
 const updateGeometry = () => {
     // Do not update if not changed
