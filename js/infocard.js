@@ -1,5 +1,21 @@
 document.addEventListener("DOMContentLoaded", (event) => {
     (() => {
+        const eventBlocker = (e) => {
+            e.stopImmediatePropagation();
+            e.stopPropagation();
+        }
+
+        const onClick = (e) => {
+            if (button.classList.contains('toggle')) {
+                button.classList.remove('toggle');
+                card.classList.remove('visible');
+            } else {
+                button.classList.add('toggle');
+                card.classList.add('visible');
+            }
+            eventBlocker(e);
+        }
+
         const projectTitle = document.title.split(' |')[0];
         const card = document.getElementById('info-card');
         if (card === null) return;
@@ -46,15 +62,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
         path.classList.add('path');
         const button = document.body.appendChild(document.createElement('div'));
         button.id = 'nav-button';
-        button.addEventListener('click', (e) => {
-            if (button.classList.contains('toggle')) {
-                button.classList.remove('toggle');
-                card.classList.remove('visible');
-            } else {
-                button.classList.add('toggle');
-                card.classList.add('visible');
-            }
-        });
+        button.addEventListener('click', onClick);
         const buttonWrapper = button.appendChild(document.createElement('div'));
         buttonWrapper.classList.add('nav-button-wrapper');
         for (let i = 0; i < 5; i++) {
@@ -65,8 +73,15 @@ document.addEventListener("DOMContentLoaded", (event) => {
 
         card.appendChild(wrapper);
 
-        return {
-            'this': false
-        };
+        button.onmousemove = card.onmousemove = eventBlocker;
+        button.ontouchmove = card.ontouchmove = eventBlocker;
+        document.addEventListener('click', (e) => {
+            if (!card.classList.contains('visible')) return;
+            if (e.path !== undefined) {
+                if (e.path.indexOf(card) === -1) {
+                    onClick();
+                }
+            }
+        });
     })();
 });
