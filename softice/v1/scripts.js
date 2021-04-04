@@ -10,11 +10,11 @@ let motions;
 // Geometry parameters
 const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
 const length_factor = isMobileDevice() ? 4000 : 6000;
-const length = length_factor * resolution * sizeFactor;
+const length = 600;//length_factor * resolution * sizeFactor;
 const width = 300 * resolution * sizeFactor;
 const halfWidth = width/2;
 const distance_factor = isMobileDevice() ? 26 : 20;
-const distance = distance_factor * resolution * sizeFactor;
+const distance = 100;//distance_factor * resolution * sizeFactor;
 const limit = distance / width * 2;
 const linksCount = length / distance;
 const links = [];
@@ -161,18 +161,19 @@ const updateGeometry = () => {
         p.y = link.y - halfWidth * Math.sin(a);
     });
     // Update triangles optimized
-    tris_to_draw.length = 0
+    tris_to_draw.length = 0;
+    let k = 0;
     tris.forEach((tri, i) => {
         const p0 = tri.p0;
         const p1 = tri.p1;
         const p2 = tri.p2;
-        //Triangle on screen test
+        // Triangle on screen test
         if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
         if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
         if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
         if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
-        //Further geometry optimisation possible
-        //
+        // Further geometry optimisation is possible…
+        // …here
         // Gradient calculation for triangle
         const p0p1 = new Point(p1.x - p0.x, p1.y - p0.y);
         const p0p2 = new Point(p2.x - p0.x, p2.y - p0.y);
@@ -181,10 +182,23 @@ const updateGeometry = () => {
         const t = dot / dq;
         const px = p0.x + p0p2.x * t;
         const py = p0.y + p0p2.y * t;
-        tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
-        gradient_stops.forEach(s => {
-            tri.gradient.addColorStop(s.stop, s.color);
-        });
+        if (true) {
+            k += i % 2 ? distance : 0;
+            sqrt = Math.sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
+            sinA = (p2.x - p1.x) / sqrt;
+            cosA = (p2.y - p1.y) / sqrt;
+            const x = p1.x - (p1.x - px) / 2;// + (i % 2 ? + (halfWidth - k) * cosA : - (halfWidth - k) * cosA);
+            const y = p1.y - (p1.y - py) / 2;// + (i % 2 ? + (halfWidth - k) * sinA : - (halfWidth - k) * sinA);
+            tri.gradient = ctx.createRadialGradient(x, y, 0, x, y, halfWidth);
+            gradient_stops.forEach(s => {
+                if (s.stop * 2 < 1) tri.gradient.addColorStop(1 - s.stop * 2, s.color);
+            });
+        } else {
+            tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
+            gradient_stops.forEach(s => {
+                tri.gradient.addColorStop(s.stop, s.color);
+            });
+        }
         tris_to_draw.unshift(tri);
     });
     return true;
@@ -192,28 +206,6 @@ const updateGeometry = () => {
 
 const renderFrame = () => {
     ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
-    //Draw links
-    /*
-    ctx.fillStyle = '#FFF';
-    links.forEach(link => {
-        ctx.beginPath();
-        ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
-        ctx.closePath();
-        ctx.fill();
-    });
-     */
-
-    //Draw points
-    /*
-    points.forEach((link, i) => {
-        ctx.fillStyle = '#FF0000'
-        ctx.beginPath();
-        ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
-        ctx.closePath();
-        ctx.fill();
-    });
-    */
-    // /*
     tris_to_draw.forEach((tri, i) => {
         ctx.beginPath();
         ctx.fillStyle = tri.gradient;
@@ -229,16 +221,52 @@ const renderFrame = () => {
         ctx.fill();
         ctx.stroke();
     });
-    // */
-    //Draw target
-    /*
+    //For debuging purposes
+    drawTris();
+     drawLinks();
+     drawPoints();
+    // drawTarget();
+};
+const drawTris = () => {
+    tris_to_draw.forEach((tri, i) => {
+        ctx.beginPath();
+        ctx.strokeStyle = '#000';
+        tri.original.forEach((p, j) => {
+            if (j === 0) {
+                ctx.moveTo(p.x, p.y);
+            } else{
+                ctx.lineTo(p.x, p.y);
+            }
+        });
+        ctx.closePath();
+        ctx.stroke();
+    });
+}
+const drawLinks = () => {
+    ctx.fillStyle = '#FFF';
+    links.forEach(link => {
+        ctx.beginPath();
+        ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.fill();
+    });
+}
+const drawPoints = () => {
+    points.forEach((link, i) => {
+        ctx.fillStyle = '#FF0000'
+        ctx.beginPath();
+        ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
+        ctx.closePath();
+        ctx.fill();
+    });
+}
+const drawTarget = () => {
     ctx.fillStyle = '#000000'
     ctx.beginPath();
     ctx.arc(targetPoint.x, targetPoint.y, 10, 0, 2 * Math.PI);
     ctx.closePath();
     ctx.fill();
-    */
-};
+}
 
 class Point {
     x;
@@ -250,7 +278,7 @@ class Point {
 }
 
 class Link extends Point {
-    a
+    a;
     constructor(x, y) {
         super(x, y);
         this.a = Math.PI;
