@@ -14,7 +14,7 @@ const length = 600;//length_factor * resolution * sizeFactor;
 const width = 300 * resolution * sizeFactor;
 const halfWidth = width/2;
 const distance_factor = isMobileDevice() ? 26 : 20;
-const distance = 100;//distance_factor * resolution * sizeFactor;
+const distance = distance_factor * resolution * sizeFactor;
 const limit = distance / width * 2;
 const linksCount = length / distance;
 const links = [];
@@ -183,12 +183,14 @@ const updateGeometry = () => {
         const px = p0.x + p0p2.x * t;
         const py = p0.y + p0p2.y * t;
         if (true) {
-            k += i % 2 ? distance : 0;
-            sqrt = Math.sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
-            sinA = (p2.x - p1.x) / sqrt;
-            cosA = (p2.y - p1.y) / sqrt;
-            const x = p1.x - (p1.x - px) / 2;// + (i % 2 ? + (halfWidth - k) * cosA : - (halfWidth - k) * cosA);
-            const y = p1.y - (p1.y - py) / 2;// + (i % 2 ? + (halfWidth - k) * sinA : - (halfWidth - k) * sinA);
+            const j = Math.floor(i / 2);
+            link0 = links[j];
+            link1 = links[(j+1) % links.length];
+            d = j * distance - halfWidth;
+            const dx = link0.x - link1.x;
+            const dy = link0.y - link1.y;
+            const x = link0.x + dx * d / distance;
+            const y = link0.y + dy * d / distance;
             tri.gradient = ctx.createRadialGradient(x, y, 0, x, y, halfWidth);
             gradient_stops.forEach(s => {
                 if (s.stop * 2 < 1) tri.gradient.addColorStop(1 - s.stop * 2, s.color);
@@ -223,8 +225,8 @@ const renderFrame = () => {
     });
     //For debuging purposes
     drawTris();
-     drawLinks();
-     drawPoints();
+    drawLinks();
+    // drawPoints();
     // drawTarget();
 };
 const drawTris = () => {
@@ -243,17 +245,25 @@ const drawTris = () => {
     });
 }
 const drawLinks = () => {
+    let x, y;
     ctx.fillStyle = '#FFF';
+    ctx.strokeStyle = '#FFF';
     links.forEach(link => {
         ctx.beginPath();
         ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
         ctx.closePath();
         ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x || link.x, y || link.y);
+        ctx.lineTo(link.x, link.y);
+        ctx.stroke();
+        x = link.x;
+        y = link.y;
     });
 }
 const drawPoints = () => {
+    ctx.fillStyle = '#FFF'
     points.forEach((link, i) => {
-        ctx.fillStyle = '#FF0000'
         ctx.beginPath();
         ctx.arc(link.x, link.y, 10, 0, 2 * Math.PI);
         ctx.closePath();
