@@ -170,10 +170,10 @@ const updateGeometry = () => {
         const p1 = tri.p1;
         const p2 = tri.p2;
         // Triangle on screen test
-        if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
-        if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
-        if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
-        if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
+        // if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
+        // if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
+        // if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
+        // if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
         // Further geometry optimisation is possible…
         // …here
         // Gradient calculation for triangle
@@ -184,69 +184,100 @@ const updateGeometry = () => {
         const t = dot / dq;
         const px = p0.x + p0p2.x * t;
         const py = p0.y + p0p2.y * t;
-        if (true) {
-
-            let x, y;
-            const j = Math.floor(i / 2);
-            const link0 = links[j];
-            const link1 = links[(j+1) % links.length];
-            const middleP = new Point(link0.x + (link1.x - link0.x)/2, link0.y + (link1.y - link0.y)/2);
-            let startPoint = link0;
-            let endPoint = link1;
-            if (!(i % 2)) {
-                x = p0.x + p0p1.x / 2;
-                y = p0.y + p0p1.y / 2;
-                debugPoints.push(startPoint);
-                const nTri = tris[i + 1];
-                intp = lineLineIntersection(p0, p1, nTri.p2, nTri.p1);
-                if (intp !== undefined) {
-                    const d0 = pointPointDistance(link0, intp);
-                    const d1 = pointPointDistance(link1, intp);
-                    const md = pointPointDistance(middleP, intp);
-                    const mdd = (d0 + d1) / 2;
-                    const sx = intp.x + (middleP.x - intp.x) * mdd / md;
-                    const sy = intp.y + (middleP.y - intp.y) * mdd / md;
-                    debugPoints.push(new Point(sx, sy));
-                    // debugPoints.push(intp);
+        if (true) { // Calculating round gradients at the ends
+            if (i % 2) {
+                const nextTri = tris[(i + 1) % tris.length];
+                const j = Math.floor(i / 2);
+                const prevLink = links[Math.floor(i / 2)];
+                const nextLink = links[(Math.floor(i / 2)+1) % links.length];
+                const midPoint = Point.summ(prevLink, nextLink).scale(0.5);
+                let interpolatedPoint;
+                xing = lineLineIntersection(p0, p1, nextTri.p2, nextTri.p1);
+                if (xing !== undefined) {
+                    const mDist = Point.magnitude(midPoint, xing);
+                    if (mDist < 1000) {
+                        const iDist = (Point.magnitude(prevLink, xing) + Point.magnitude(nextLink, xing)) / 2;
+                        interpolatedPoint = Point.summ(xing, Point.diff(midPoint, xing).scale(iDist / mDist));
+                        debugPoints.push(interpolatedPoint);
+                    } else {
+                        interpolatedPoint = midPoint;
+                        debugPoints.push(midPoint);
+                    }
                 } else {
-                    debugPoints.push(middleP);
+                    interpolatedPoint = midPoint;
+                    debugPoints.push(midPoint);
                 }
-                endPoint = debugPoints[debugPoints.length - 1];
-            } else {
-                startPoint = debugPoints[debugPoints.length - 1];
+                //1
+                let ttd = Point.magnitude (prevLink, interpolatedPoint);
+                let offset = halfWidth - k;
+                k += ttd;
+                let ttp = new Point(
+                    prevLink.x + (interpolatedPoint.x - prevLink.x) * offset / ttd, 
+                    prevLink.y + (interpolatedPoint.y - prevLink.y) * offset / ttd
+                );
+                tri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
+                gradientStops.forEach(s => {
+                    if (s.stop * 2 < 1) tri.gradient.addColorStop(1 - s.stop * 2, s.color);
+                });
+                trisToDraw.unshift(tri);
+                //2
+                ttd = Point.magnitude (interpolatedPoint, nextLink);
+                offset = halfWidth - k;
+                k += ttd;
+                ttp = new Point(
+                    interpolatedPoint.x + (nextLink.x - interpolatedPoint.x) * offset / ttd, 
+                    interpolatedPoint.y + (nextLink.y - interpolatedPoint.y) * offset / ttd
+                );
+                nextTri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
+                gradientStops.forEach(s => {
+                    if (s.stop * 2 < 1) nextTri.gradient.addColorStop(1 - s.stop * 2, s.color);
+                });
+                trisToDraw.unshift(nextTri);
+                // if (!(i % 2)) {
+                //     debugPoints[debugPoints.length - 1] = ttp;
+                //     debugPoints.push(nextPoint);
+                // } else {
+                //     debugPoints.push(ttp);
+                // }
+                // let prevPoint = prevLink;
+                // let nextPoint = nextLink;
+                // if (!(i % 2)) {
+                //     debugPoints.push(prevPoint);
+                //     if (xing !== undefined) {
+                //         const md = Point.magnitude(midPoint, xing);
+                //         if (md < 1000) {
+                //             const pd = Point.magnitude(prevPoint, xing);
+                //             const nd = Point.magnitude(nextPoint, xing);
+                //             const mdd = (pd + nd) / 2;
+                //             const sx = xing.x + (midPoint.x - xing.x) * mdd / md;
+                //             const sy = xing.y + (midPoint.y - xing.y) * mdd / md;
+                //             debugPoints.push(new Point(sx, sy));
+                //         } else {
+                //             debugPoints.push(midPoint);
+                //         }
+                //         // debugPoints.push(intp);
+                //     } else {
+                //         debugPoints.push(midPoint);
+                //     }
+                //     nextPoint = debugPoints[debugPoints.length - 1];
+                // } else {
+                //     prevPoint = debugPoints[debugPoints.length - 1];
+                // }
+                
+                // d = j * distance - halfWidth;
+                // const dx = prevLink.x - nextLink.x;
+                // const dy = prevLink.y - nextLink.y;
+                // const ux = prevLink.x + dx * d / distance;
+                // const uy = prevLink.y + dy * d / distance;
+                
             }
-            const ttd = pointPointDistance (startPoint, endPoint)
-            const offset = halfWidth - k;
-            k += ttd;
-            const ttp = new Point(
-                startPoint.x + (endPoint.x - startPoint.x) * offset / ttd, 
-                startPoint.y + (endPoint.y - startPoint.y) * offset / ttd
-            );
-            if (!(i % 2)) {
-                debugPoints[debugPoints.length - 1] = ttp;
-                debugPoints.push(endPoint);
-            } else {
-                debugPoints.push(ttp);
-            }
-            
-            d = j * distance - halfWidth;
-            // const dx = link0.x - link1.x;
-            // const dy = link0.y - link1.y;
-            // const ux = link0.x + dx * d / distance;
-            // const uy = link0.y + dy * d / distance;
-            const ux = ttp.x;
-            const uy = ttp.y;
-            tri.gradient = ctx.createRadialGradient(ux, uy, 0, ux, uy, halfWidth);
-            gradientStops.forEach(s => {
-                if (s.stop * 2 < 1) tri.gradient.addColorStop(1 - s.stop * 2, s.color);
-            });
         } else {
             tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
             gradientStops.forEach(s => {
                 tri.gradient.addColorStop(s.stop, s.color);
             });
+            trisToDraw.unshift(tri);
         }
-        trisToDraw.unshift(tri);
     });
     return true;
 };

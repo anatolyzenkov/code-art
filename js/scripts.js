@@ -1,5 +1,4 @@
 // UTILS
-
 const getDevicePixelRatio = () => {
     if (window.devicePixelRatio) return window.devicePixelRatio;
     return 1;
@@ -45,6 +44,23 @@ class Point {
         this.x = x || 0;
         this.y = y || 0;
     }
+    scale(s) {
+        this.x *= s;
+        this.y *= s;
+        return this;
+    }
+    magnitude() {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    static summ(p0, p1) {
+        return new Point(p0.x + p1.x, p0.y + p1.y);
+    }
+    static diff(p0, p1) {
+        return new Point(p0.x - p1.x, p0.y - p1.y);
+    }
+    static magnitude(p0, p1) {
+        return Math.sqrt((p0.x-p1.x)*(p0.x-p1.x) + (p0.y-p1.y)*(p0.y-p1.y));
+    }
 }
 
 const deltaAngle = (a0, a1) => {
@@ -67,10 +83,6 @@ const lineLineIntersection = (p0, p1, p2, p3) => {
     const y = (a1*c2 - a2*c1)/determinant;
     return {x: x, y: y};
 };
-
-const pointPointDistance = (p0, p1) => {
-    return Math.sqrt((p0.x-p1.x)*(p0.x-p1.x) + (p0.y-p1.y)*(p0.y-p1.y));
-}
 
 const pointPolygonHitTest = (p, poly) => {
   // ray-casting algorithm based on
