@@ -10,7 +10,7 @@ let motions;
 // Geometry parameters
 const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
 const lengthFactor = isMobileDevice() ? 4000 : 6000;
-const length = 600;//lengthFactor * resolution * sizeFactor;
+const length = lengthFactor * resolution * sizeFactor;
 const width = 300 * resolution * sizeFactor;
 const halfWidth = width/2;
 const distanceFactor = isMobileDevice() ? 26 : 20;
@@ -184,12 +184,12 @@ const updateGeometry = () => {
         const t = dot / dq;
         const px = p0.x + p0p2.x * t;
         const py = p0.y + p0p2.y * t;
-        if (true) { // Calculating round gradients at the ends
+        const j = Math.floor(i / 2);
+        if (j * distance < halfWidth) { // Calculating round gradients at the ends
             if (i % 2) {
                 const nextTri = tris[(i + 1) % tris.length];
-                const j = Math.floor(i / 2);
-                const prevLink = links[Math.floor(i / 2)];
-                const nextLink = links[(Math.floor(i / 2)+1) % links.length];
+                const prevLink = links[j];
+                const nextLink = links[(j+1) % links.length];
                 const midPoint = Point.summ(prevLink, nextLink).scale(0.5);
                 let interpolatedPoint;
                 xing = lineLineIntersection(p0, p1, nextTri.p2, nextTri.p1);
@@ -207,69 +207,20 @@ const updateGeometry = () => {
                     interpolatedPoint = midPoint;
                     debugPoints.push(midPoint);
                 }
-                //1
-                let ttd = Point.magnitude (prevLink, interpolatedPoint);
-                let offset = halfWidth - k;
-                k += ttd;
-                let ttp = new Point(
-                    prevLink.x + (interpolatedPoint.x - prevLink.x) * offset / ttd, 
-                    prevLink.y + (interpolatedPoint.y - prevLink.y) * offset / ttd
-                );
-                tri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
-                gradientStops.forEach(s => {
-                    if (s.stop * 2 < 1) tri.gradient.addColorStop(1 - s.stop * 2, s.color);
+                [
+                    {tri: tri, p0: prevLink, p1: interpolatedPoint},
+                    {tri: nextTri, p0: interpolatedPoint, p1: nextLink}
+                ].forEach(item => {
+                    const m = Point.magnitude (item.p0, item.p1);
+                    const offset = halfWidth - k;
+                    k += m;
+                    const ttp = Point.summ(item.p0, Point.diff(item.p1, item.p0).scale(offset / m))
+                    item.tri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
+                    gradientStops.forEach(s => {
+                        if (s.stop * 2 < 1) item.tri.gradient.addColorStop(1 - s.stop * 2, s.color);
+                    });
+                    trisToDraw.unshift(item.tri);
                 });
-                trisToDraw.unshift(tri);
-                //2
-                ttd = Point.magnitude (interpolatedPoint, nextLink);
-                offset = halfWidth - k;
-                k += ttd;
-                ttp = new Point(
-                    interpolatedPoint.x + (nextLink.x - interpolatedPoint.x) * offset / ttd, 
-                    interpolatedPoint.y + (nextLink.y - interpolatedPoint.y) * offset / ttd
-                );
-                nextTri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
-                gradientStops.forEach(s => {
-                    if (s.stop * 2 < 1) nextTri.gradient.addColorStop(1 - s.stop * 2, s.color);
-                });
-                trisToDraw.unshift(nextTri);
-                // if (!(i % 2)) {
-                //     debugPoints[debugPoints.length - 1] = ttp;
-                //     debugPoints.push(nextPoint);
-                // } else {
-                //     debugPoints.push(ttp);
-                // }
-                // let prevPoint = prevLink;
-                // let nextPoint = nextLink;
-                // if (!(i % 2)) {
-                //     debugPoints.push(prevPoint);
-                //     if (xing !== undefined) {
-                //         const md = Point.magnitude(midPoint, xing);
-                //         if (md < 1000) {
-                //             const pd = Point.magnitude(prevPoint, xing);
-                //             const nd = Point.magnitude(nextPoint, xing);
-                //             const mdd = (pd + nd) / 2;
-                //             const sx = xing.x + (midPoint.x - xing.x) * mdd / md;
-                //             const sy = xing.y + (midPoint.y - xing.y) * mdd / md;
-                //             debugPoints.push(new Point(sx, sy));
-                //         } else {
-                //             debugPoints.push(midPoint);
-                //         }
-                //         // debugPoints.push(intp);
-                //     } else {
-                //         debugPoints.push(midPoint);
-                //     }
-                //     nextPoint = debugPoints[debugPoints.length - 1];
-                // } else {
-                //     prevPoint = debugPoints[debugPoints.length - 1];
-                // }
-                
-                // d = j * distance - halfWidth;
-                // const dx = prevLink.x - nextLink.x;
-                // const dy = prevLink.y - nextLink.y;
-                // const ux = prevLink.x + dx * d / distance;
-                // const uy = prevLink.y + dy * d / distance;
-                
             }
         } else {
             tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
@@ -300,10 +251,10 @@ const renderFrame = () => {
         ctx.stroke();
     });
     //For debuging purposes
-    drawTris();
+    // drawTris();
     // drawPoints(links);
     // drawPoints(points);
-    drawPoints(debugPoints, true);
+    // drawPoints(debugPoints, true);
     // drawTarget();
 };
 const drawTris = () => {
