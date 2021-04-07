@@ -9,7 +9,7 @@ let motions;
 
 // Geometry parameters
 const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
-const lengthFactor = isMobileDevice() ? 4000 : 6000;
+const lengthFactor = isMobileDevice() ? 3000 : 4000;
 const length = lengthFactor * resolution * sizeFactor;
 const width = 300 * resolution * sizeFactor;
 const halfWidth = width/2;
@@ -21,6 +21,8 @@ const links = [];
 const points = [];
 const tris = [];
 const trisToDraw = [];
+let startCap;
+let endCap;
 const debugPoints = [];
 
 // Paint parameters
@@ -51,6 +53,9 @@ const initScene = () => {
         links.push(new Link(canvas2d.width + i * distance, canvas2d.height));
         points.push(new Point(), new Point());
     }
+    // Setup geometry. Caps
+    startCap = new Cap();
+    endCap = new Cap();
     // Setup geometry. Points and Triangles
     points.every((p, i) => {
         if (i % 2) {
@@ -161,19 +166,35 @@ const updateGeometry = () => {
         p.x = link.x - halfWidth * Math.cos(a);
         p.y = link.y - halfWidth * Math.sin(a);
     });
+    // Update caps
+    startCap.x = links[0].x;
+    startCap.y = links[0].y;
+    startCap.a0 = links[1].a - Math.PI / 2;
+    startCap.a1 = links[1].a - Math.PI / 2 + Math.PI;
+    startCap.gradient = ctx.createRadialGradient(startCap.x, startCap.y, 0, startCap.x, startCap.y, halfWidth);
+    gradientStops.forEach(s => {
+        if (s.stop * 2 < 1) startCap.gradient.addColorStop(1 - s.stop * 2, s.color);
+    });
+    endCap.x = links[links.length - 1].x;
+    endCap.y = links[links.length - 1].y;
+    endCap.a0 = links[links.length - 1].a + Math.PI / 2;
+    endCap.a1 = links[links.length - 1].a + Math.PI / 2 + Math.PI;
+    endCap.gradient = ctx.createRadialGradient(endCap.x, endCap.y, 0, endCap.x, endCap.y, halfWidth);
+    gradientStops.forEach(s => {
+        if (s.stop * 2 < 1) endCap.gradient.addColorStop(1 - s.stop * 2, s.color);
+    });
     // Update triangles optimized
     trisToDraw.length = 0;
     debugPoints.length = 0;
-    let k = 0;
     tris.forEach((tri, i) => {
         const p0 = tri.p0;
         const p1 = tri.p1;
         const p2 = tri.p2;
         // Triangle on screen test
-        // if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
-        // if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
-        // if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
-        // if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
+        if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
+        if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
+        if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
+        if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
         // Further geometry optimisation is possible…
         // …here
         // Gradient calculation for triangle
@@ -185,56 +206,22 @@ const updateGeometry = () => {
         const px = p0.x + p0p2.x * t;
         const py = p0.y + p0p2.y * t;
         const j = Math.floor(i / 2);
-        if (j * distance < halfWidth) { // Calculating round gradients at the ends
-            if (i % 2) {
-                const nextTri = tris[(i + 1) % tris.length];
-                const prevLink = links[j];
-                const nextLink = links[(j+1) % links.length];
-                const midPoint = Point.summ(prevLink, nextLink).scale(0.5);
-                let interpolatedPoint;
-                xing = lineLineIntersection(p0, p1, nextTri.p2, nextTri.p1);
-                if (xing !== undefined) {
-                    const mDist = Point.magnitude(midPoint, xing);
-                    if (mDist < 1000) {
-                        const iDist = (Point.magnitude(prevLink, xing) + Point.magnitude(nextLink, xing)) / 2;
-                        interpolatedPoint = Point.summ(xing, Point.diff(midPoint, xing).scale(iDist / mDist));
-                        debugPoints.push(interpolatedPoint);
-                    } else {
-                        interpolatedPoint = midPoint;
-                        debugPoints.push(midPoint);
-                    }
-                } else {
-                    interpolatedPoint = midPoint;
-                    debugPoints.push(midPoint);
-                }
-                [
-                    {tri: tri, p0: prevLink, p1: interpolatedPoint},
-                    {tri: nextTri, p0: interpolatedPoint, p1: nextLink}
-                ].forEach(item => {
-                    const m = Point.magnitude (item.p0, item.p1);
-                    const offset = halfWidth - k;
-                    k += m;
-                    const ttp = Point.summ(item.p0, Point.diff(item.p1, item.p0).scale(offset / m))
-                    item.tri.gradient = ctx.createRadialGradient(ttp.x, ttp.y, 0, ttp.x, ttp.y, halfWidth);
-                    gradientStops.forEach(s => {
-                        if (s.stop * 2 < 1) item.tri.gradient.addColorStop(1 - s.stop * 2, s.color);
-                    });
-                    trisToDraw.unshift(item.tri);
-                });
-            }
-        } else {
-            tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
-            gradientStops.forEach(s => {
-                tri.gradient.addColorStop(s.stop, s.color);
-            });
-            trisToDraw.unshift(tri);
-        }
+        tri.gradient = ctx.createLinearGradient(p1.x, p1.y, px, py);
+        gradientStops.forEach(s => {
+            tri.gradient.addColorStop(s.stop, s.color);
+        });
+        trisToDraw.unshift(tri);
     });
     return true;
 };
 
 const renderFrame = () => {
     ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
+    ctx.beginPath();
+    ctx.fillStyle = endCap.gradient;
+    ctx.arc(endCap.x, endCap.y, halfWidth, endCap.a0, endCap.a1);
+    ctx.closePath();
+    ctx.fill();
     trisToDraw.forEach((tri, i) => {
         ctx.beginPath();
         ctx.fillStyle = tri.gradient;
@@ -250,6 +237,11 @@ const renderFrame = () => {
         ctx.fill();
         ctx.stroke();
     });
+    ctx.beginPath();
+    ctx.fillStyle = startCap.gradient;
+    ctx.arc(startCap.x, startCap.y, halfWidth, startCap.a0, startCap.a1);
+    ctx.closePath();
+    ctx.fill();
     //For debuging purposes
     // drawTris();
     // drawPoints(links);
@@ -261,6 +253,10 @@ const drawTris = () => {
     trisToDraw.forEach((tri, i) => {
         ctx.beginPath();
         ctx.strokeStyle = '#000';
+        ctx.arc(startCap.x, startCap.y, halfWidth, startCap.a0, startCap.a1);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
         tri.original.forEach((p, j) => {
             if (j === 0) {
                 ctx.moveTo(p.x, p.y);
@@ -268,6 +264,10 @@ const drawTris = () => {
                 ctx.lineTo(p.x, p.y);
             }
         });
+        ctx.closePath();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(endCap.x, endCap.y, halfWidth, endCap.a0, endCap.a1);
         ctx.closePath();
         ctx.stroke();
     });
@@ -303,6 +303,15 @@ class Link extends Point {
     constructor(x, y) {
         super(x, y);
         this.a = Math.PI;
+    }
+}
+
+class Cap extends Point {
+    a0;
+    a1;
+    gradient;
+    constructor(x, y) {
+        super(x, y);
     }
 }
 
