@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
                                     <path d="M14 28L0 14L14 0" stroke-width="2"/>\
                                     <path d="M0 14L28 14" stroke-width="2"/>\
                                 </svg>';
-        backButton.href = "/codrt";
+        backButton.href = "/codrt/";
         document.body.appendChild(backButton);
         const hamburgerButton = document.createElement('a');
         hamburgerButton.classList.add('button', 'glyph-button', 'secondary', 'no-navbar-button', 'right');
