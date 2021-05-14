@@ -4,6 +4,15 @@ const getDevicePixelRatio = () => {
     return 1;
 };
 
+const getCanvas = (w, h, id, classes) => {
+    canvas2d = document.createElement('canvas');
+    canvas2d.width = w;
+    canvas2d.height = h;
+    canvas2d.id = id || '';
+    if (classes) canvas2d.classList.add(...classes);
+    return canvas2d;
+}
+
 const isLocalHost = () => location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.origin === 'file://';
 
 const isMobileDevice = () => {
@@ -61,6 +70,22 @@ class Point {
     static magnitude(p0, p1) {
         return Math.sqrt((p0.x-p1.x)*(p0.x-p1.x) + (p0.y-p1.y)*(p0.y-p1.y));
     }
+}
+
+const colorInterpolation = (c0, c1, n) => {
+    const color0 = parseInt(c0.substr(1), 16);
+    const color1 = parseInt(c1.substr(1), 16);
+    const r0 = (color0 & 0xFF0000) >> 16;
+    const g0 = (color0 & 0x00FF00) >> 8;
+    const b0 = (color0 & 0x0000FF) >> 0;
+    const r1 = (color1 & 0xFF0000) >> 16;
+    const g1 = (color1 & 0x00FF00) >> 8;
+    const b1 = (color1 & 0x0000FF) >> 0;
+    const r = r0 + (r1-r0) * n;
+    const g = g0 + (g1-g0) * n;
+    const b = b0 + (b1-b0) * n;
+    // return '#' + r.toString(16) + g.toString(16) + b.toString(16);
+    return '#' + ((r << 16) + (g << 8) + (b << 0)).toString(16);
 }
 
 const deltaAngle = (a0, a1) => {
