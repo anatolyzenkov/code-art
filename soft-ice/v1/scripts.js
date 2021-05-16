@@ -40,10 +40,7 @@ const initScene = () => {
         document.body.appendChild(stats.dom);
     }
     // Setup canvas
-    canvas2d = document.createElement('canvas');
-    canvas2d.id = 'canvas2d';
-    canvas2d.width = getViewport()[0] * resolution;
-    canvas2d.height = getViewport()[1] * resolution;
+    canvas2d = getCanvas(getViewport()[0] * resolution, getViewport()[1] * resolution, 'canvas2d', ['main-canvas']);
     canvas2d.style.width = getViewport()[0] + 'px';
     canvas2d.style.height = getViewport()[1] + 'px';
     ctx = canvas2d.getContext('2d');
