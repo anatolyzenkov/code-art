@@ -5,12 +5,12 @@ const getDevicePixelRatio = () => {
 };
 
 const getCanvas = (w, h, id, classes) => {
-    canvas2d = document.createElement('canvas');
-    canvas2d.width = w;
-    canvas2d.height = h;
-    canvas2d.id = id || '';
-    if (classes) canvas2d.classList.add(...classes);
-    return canvas2d;
+    const cnvs = document.createElement('canvas');
+    cnvs.width = w;
+    cnvs.height = h;
+    cnvs.id = id || '';
+    if (classes) cnvs.classList.add(...classes);
+    return cnvs;
 }
 
 const isLocalHost = () => location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.origin === 'file://';
