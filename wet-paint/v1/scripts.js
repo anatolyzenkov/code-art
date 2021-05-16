@@ -15,6 +15,7 @@ const G = new Point(0, 3);
 const perlinMapRes = 100;
 const perlinMapX = [];
 const perlinMapY = [];
+const colors = new Array(1000);
 
 // Paint parameters
 const gradientStops = [];
@@ -31,12 +32,11 @@ const initScene = () => {
         document.body.appendChild(stats.dom);
     }
     // Setup canvas
-    canvas2d = getCanvas(getViewport()[0] * resolution, getViewport()[1] * resolution, 'canvas2d');
+    canvas2d = getCanvas(getViewport()[0] * resolution, getViewport()[1] * resolution, 'canvas2d', ['main-canvas']);
     canvas2d.style.width = getViewport()[0] + 'px';
     canvas2d.style.height = getViewport()[1] + 'px';
     ctx = canvas2d.getContext('2d');
     document.body.appendChild(canvas2d);
-    initDrops();
     // Setup perlin
     [perlinMapX, perlinMapY].forEach((array) => {
         noise.seed(Math.random())
@@ -46,6 +46,31 @@ const initScene = () => {
             }
         }
     });
+    // Setup colors
+    const colorGradient = getCanvas(colors.length, 100, 'canvas2d');
+    const cgCtx = colorGradient.getContext('2d');
+    const grd = cgCtx.createLinearGradient(0, 0, colorGradient.width, 0);
+    
+    grd.addColorStop(0, '#27368E');
+    grd.addColorStop(0.1761, '#373BBD');
+    grd.addColorStop(0.3068, '#3F3384');
+    grd.addColorStop(0.3722, '#482862');
+    grd.addColorStop(0.5044, '#4E1F3B');
+    grd.addColorStop(0.5857, '#87283F');
+    grd.addColorStop(0.6671, '#B13E41');
+    grd.addColorStop(0.7397, '#D74B3E');
+    grd.addColorStop(0.8719, '#EC5834');
+    cgCtx.fillStyle = grd;
+    cgCtx.fillRect(0, 0, colorGradient.width, colorGradient.height);
+    const myImageData = cgCtx.getImageData(0, 0, colors.length, 1);
+    for (let i = 0; i < colors.length; i++) {
+        colors[i] = '#' + (
+            ((myImageData.data[i * 4]) << 16) +
+            ((myImageData.data[i * 4 + 1]) << 8) +
+            ((myImageData.data[i * 4 + 2]) << 0)
+            ).toString(16);
+    }
+    initDrops();
     // Setup events
     let timeoutID = -1;
     window.addEventListener('resize', () => {
@@ -66,7 +91,7 @@ const initDrops = () => {
         const drop = new Drop(Math.random() * getViewport()[0] * resolution, -100000 * Math.random());
         drop.radius = 5 + 80 * Math.random();
         const n = Math.sin(drop.radius/85 * Math.PI);
-        drop.color = n < 0.5 ? colorInterpolation(color0, color1, n) : colorInterpolation(color1, color2, n);
+        drop.color = colors[Math.floor(colors.length * (1-n))];
         drops.push(drop);
     }
     // drops.sort((a, b) => { return a.radius < b.radius });
@@ -94,7 +119,7 @@ const updateScene = () => {
             drop.y += 8 * perlinMapY[n];
         }
     });
-    drops.sort((a, b) => { return a.y - a.radius > b.y - b.radius });
+    drops.sort((a, b) => { return a.y - a.radius > b.y - b.radius ? -1 : 1});
 };
 
 const renderFrame = () => {
