@@ -104,6 +104,8 @@ const updateScene = () => {
         const mapPosX = (perlinMapRes + Math.round(drop.x/canvas2d.width * perlinMapRes)) % perlinMapRes;
         const mapPosY = (perlinMapRes + Math.round(drop.y/canvas2d.height * perlinMapRes)) % perlinMapRes;
         const n = mapPosY * perlinMapRes + mapPosX;
+        drop.lastX = drop.x;
+        drop.lastY = drop.y;
         drop.y += G.y + drop.radius / 50;
         if (drop.y + drop.radius < 0) return;
         drop.y += 8 * perlinMapY[n];
@@ -113,10 +115,12 @@ const updateScene = () => {
         }
         if (drop.x + drop.radius < 0) {
             drop.x = getViewport()[0] * resolution + drop.radius;
+            drop.lastX = drop.x;
             return;
         }
         if (drop.x - drop.radius > getViewport()[0] * resolution) {
             drop.x = -drop.radius;
+            drop.lastX = drop.x;
             return;
         }
         drop.x += G.x - 6 * k;
@@ -128,11 +132,13 @@ const updateScene = () => {
 const renderFrame = () => {
     //ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
     drops.forEach(drop => {
-        ctx.fillStyle = drop.color;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(drop.x, drop.y, drop.radius, 0, 2 * Math.PI);
-        ctx.closePath();
-        ctx.fill();
+        ctx.lineWidth = drop.radius * 2;
+        ctx.strokeStyle = drop.color;
+        ctx.moveTo(drop.lastX, drop.lastY);
+        ctx.lineTo(drop.x, drop.y);
+        ctx.stroke();
     });
 };
 
@@ -149,13 +155,15 @@ class Drop extends Point {
         super(x, y);
         this.color = color || "#FFFFFF";
         this.radius = 10;
+        this.lastX = x;
+        this.lastY = y;
     }
 
     static freshDrop(drop) {
         const freshDrop = drop || new Drop();
         freshDrop.radius = 5 + 80 * Math.random();
-        freshDrop.x = Math.random() * getViewport()[0] * resolution;
-        freshDrop.y = -freshDrop.radius;
+        freshDrop.lastX = freshDrop.x = Math.random() * getViewport()[0] * resolution;
+        freshDrop.lastY = freshDrop.y = -freshDrop.radius;
         const n = Math.sin(freshDrop.radius/85 * Math.PI);
         freshDrop.radius *= sizeFactor;
         freshDrop.color = colors[Math.floor(colors.length * (1-n))];
