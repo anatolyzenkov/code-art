@@ -13,7 +13,22 @@ document.addEventListener("DOMContentLoaded", (event) => {
             }
             eventBlocker(e);
         }
-        if (location.origin === 'file://') return;
+        if (location.origin === 'file://') {
+            [...document.getElementsByClassName('hidden')].forEach(el => {
+                el.remove();
+            });
+            return;
+        }
+        const ghostTitle = document.getElementById('ghost-title');
+        if (ghostTitle !== undefined) {
+            ghostTitle.classList.remove('hidden');
+            ghostTitle.addEventListener(whichTransitionEvent(), function() {
+                ghostTitle.remove();
+            });
+            window.setTimeout(() => {
+                ghostTitle.classList.add('disappearing');
+            }, 1000);
+        }
         const backButton = document.createElement('a');
         backButton.classList.add('button', 'glyph-button', 'secondary', 'no-navbar-button', 'left');
         backButton.innerHTML ='<svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">\

@@ -43,6 +43,23 @@ const getViewport = () => {
     return [viewPortWidth, viewPortHeight];
 };
 
+// https://stackoverflow.com/questions/12250329/transitionend-event-not-firing
+const whichTransitionEvent = () => {
+    const el = document.createElement('fakeelement');
+    const transitions = {
+      'WebkitTransition' :'webkitTransitionEnd',
+      'MozTransition'    :'transitionend',
+      'MSTransition'     :'msTransitionEnd',
+      'OTransition'      :'oTransitionEnd',
+      'transition'       :'transitionEnd'
+    }
+    for (let t in transitions){
+        if ( el.style[t] !== undefined ){
+            return transitions[t];
+        }
+    }
+}
+
 // MATH and GEOM
 
 const PI2 = Math.PI;
