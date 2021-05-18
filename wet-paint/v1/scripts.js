@@ -9,19 +9,12 @@ let motions;
 const drops = [];
 
 // Scene parameters
-const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
-const debugPoints = [];
+let sizeFactor = 1;
 const G = new Point(0, 3);
 const perlinMapRes = 100;
 const perlinMapX = [];
 const perlinMapY = [];
 const colors = new Array(1000);
-
-// Paint parameters
-const gradientStops = [];
-const color0 = '#f4481a';
-const color1 = '#030744';
-const color2 = '#20246d';
 
 const initScene = () => {
     // Add Stats
@@ -86,15 +79,14 @@ const initScene = () => {
 };
 
 const initDrops = () => {
+    sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
     drops.length = 0;
-    for (let index = 0; index < 10000; index++) {
-        const drop = new Drop(Math.random() * getViewport()[0] * resolution, -100000 * Math.random());
-        drop.radius = 5 + 80 * Math.random();
-        const n = Math.sin(drop.radius/85 * Math.PI);
-        drop.color = colors[Math.floor(colors.length * (1-n))];
+    const dropsCount = Math.round(300 * getViewport()[0]/1440);
+    for (let index = 0; index < dropsCount; index++) {
+        const drop = Drop.freshDrop();
+        drop.y = -Math.random() * getViewport()[1] * resolution;
         drops.push(drop);
     }
-    // drops.sort((a, b) => { return a.radius < b.radius });
 }
 
 const updateFrame = () => {
@@ -109,15 +101,26 @@ const updateFrame = () => {
 const updateScene = () => {
     const k = 0.5 - motions.x/canvas2d.width * resolution;
     drops.forEach(drop => {
-        const x = Math.round(drop.x/canvas2d.width * perlinMapRes);
-        const y = Math.round(drop.y/canvas2d.height * perlinMapRes);
-        const n = y * perlinMapRes + x;
+        const mapPosX = (perlinMapRes + Math.round(drop.x/canvas2d.width * perlinMapRes)) % perlinMapRes;
+        const mapPosY = (perlinMapRes + Math.round(drop.y/canvas2d.height * perlinMapRes)) % perlinMapRes;
+        const n = mapPosY * perlinMapRes + mapPosX;
         drop.y += G.y + drop.radius / 50;
-        if (y > 0) {
-            drop.x += G.x - 6 * k;
-            drop.x += 6 * perlinMapX[n];
-            drop.y += 8 * perlinMapY[n];
+        if (drop.y + drop.radius < 0) return;
+        drop.y += 8 * perlinMapY[n];
+        if (drop.y - drop.radius > canvas2d.height) {
+            Drop.freshDrop(drop);
+            return;
         }
+        if (drop.x + drop.radius < 0) {
+            drop.x = getViewport()[0] * resolution + drop.radius;
+            return;
+        }
+        if (drop.x - drop.radius > getViewport()[0] * resolution) {
+            drop.x = -drop.radius;
+            return;
+        }
+        drop.x += G.x - 6 * k;
+        drop.x += 6 * perlinMapX[n];
     });
     drops.sort((a, b) => { return a.y - a.radius > b.y - b.radius ? -1 : 1});
 };
@@ -146,5 +149,16 @@ class Drop extends Point {
         super(x, y);
         this.color = color || "#FFFFFF";
         this.radius = 10;
+    }
+
+    static freshDrop(drop) {
+        const freshDrop = drop || new Drop();
+        freshDrop.radius = 5 + 80 * Math.random();
+        freshDrop.x = Math.random() * getViewport()[0] * resolution;
+        freshDrop.y = -freshDrop.radius;
+        const n = Math.sin(freshDrop.radius/85 * Math.PI);
+        freshDrop.radius *= sizeFactor;
+        freshDrop.color = colors[Math.floor(colors.length * (1-n))];
+        return freshDrop;
     }
 }
