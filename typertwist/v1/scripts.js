@@ -26,7 +26,7 @@ const initScene = () => {
     length = img.width * sizeFactor * resolution;
     width = img.height * sizeFactor * resolution;
     halfWidth = width/2;
-    distance = 20 * sizeFactor * resolution;
+    distance = 10 * sizeFactor * resolution;
     limit = distance / width * 2;
     linksCount = length / distance;
     // Add Stats
