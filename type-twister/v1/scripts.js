@@ -1,34 +1,24 @@
 // Screen parameters
 const resolution = Math.min(2, getDevicePixelRatio());
+const DEBUG = isLocalHost();
 let canvas2d;
 let ctx;
 let targetPoint;
-const DEBUG = isLocalHost();
 let stats;
 let motions;
-let img;
+let sizeFactor
+let fontName = 'sans-serif';
+let textCanvas;
+let typeTwister;
+let text = 'Read my lips: no new taxes';
 
-// Geometry parameters
-const sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
-let length;
-let width;
-let halfWidth;
-const links = [];
-const points = [];
-const tris = [];
-const trisToDraw = [];
-let startCap;
-let endCap;
-const debugPoints = [];
 
-const initScene = () => {
-    // Fit size to image size
-    length = img.width * sizeFactor * resolution;
-    width = img.height * sizeFactor * resolution;
-    halfWidth = width/2;
-    distance = 10 * sizeFactor * resolution * (isMobileDevice() ? 1.5 : 1);
-    limit = distance / width * 2;
-    linksCount = length / distance;
+const initScene = (fntName) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('t') !== null) {
+        text = urlParams.get('t');
+    }
+    fontName = fntName;
     // Add Stats
     stats = new Stats();
     motions = new MotionSimulator();
@@ -38,58 +28,118 @@ const initScene = () => {
     }
     // Setup canvas
     canvas2d = getCanvas(getViewport()[0] * resolution, getViewport()[1] * resolution, 'canvas2d', ['main-canvas']);
+    const onResize = () => {
+        canvas2d.width = getViewport()[0] * resolution;
+        canvas2d.height = getViewport()[1] * resolution;
+        canvas2d.style.width = getViewport()[0] + 'px';
+        canvas2d.style.height = getViewport()[1] + 'px';
+        setupObjects(text);
+    }
     canvas2d.style.width = getViewport()[0] + 'px';
     canvas2d.style.height = getViewport()[1] + 'px';
     ctx = canvas2d.getContext('2d');
     document.body.appendChild(canvas2d);
-    // Setup geometry. Links
-    for (let i = 0; i < linksCount; i++) {
-        links.push(new Link(canvas2d.width + i * distance, canvas2d.height));
-        points.push(new Point(), new Point());
-    }
-    // Setup geometry. Caps
-    startCap = new Cap();
-    endCap = new Cap();
-    // Setup geometry. Points and Triangles
-    points.every((p, i) => {
-        const step = 1/linksCount;
-        const offset = step * Math.floor(i / 2);
-        let tri;
-        if (i % 2) {
-            tri = new Triangle(p, points[i + 2], points[i + 1]);
-            tri.uv0.x = offset;
-            tri.uv0.y = 1;
-            tri.uv1.x = offset + step;
-            tri.uv1.y = 1;
-            tri.uv2.x = offset + step;
-            tri.uv2.y = 0;
-        } else {
-            tri = new Triangle(p, points[i + 2], points[i + 1]);
-            tri.uv0.x = offset;
-            tri.uv0.y = 0;
-            tri.uv1.x = offset + step;
-            tri.uv1.y = 0;
-            tri.uv2.x = offset;
-            tri.uv2.y = 1;
-        }
-        tris.push(tri);
-        return i < points.length - 3;
-    });
     // Setup events
     let timeoutID = -1;
     window.addEventListener('resize', () => {
         clearTimeout(timeoutID);
         timeoutID = setTimeout(() => {
-            canvas2d.width = getViewport()[0] * resolution;
-            canvas2d.height = getViewport()[1] * resolution;
-            canvas2d.style.width = getViewport()[0] + 'px';
-            canvas2d.style.height = getViewport()[1] + 'px';
+            onResize();
         }, 300);
     });
-    // Setup states
+    onResize();
     targetPoint = new Point(canvas2d.width/2, canvas2d.height/2);
     updateFrame();
-};
+}
+
+const setupObjects = (text) => {
+    sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
+    // Setup text
+    if (textCanvas === undefined) textCanvas = getCanvas(200, 200);
+    const ctx = textCanvas.getContext('2d');
+    const fontSize = isMobileDevice() ? 240 : 360;
+    const font = '900 ' + fontSize + 'px ' + fontName;
+    ctx.font = font;
+    ctx.textBaseline = 'top';
+    let textMetrics = ctx.measureText(text.toUpperCase());
+    textCanvas.width = textMetrics.width;
+    textCanvas.height = textMetrics.fontBoundingBoxDescent;// - textMetrics,fontBoundingBoxAscent;
+    // console.log(textMetrics);
+    ctx.font = font;
+    ctx.textBaseline = 'top';
+    // document.body.appendChild(textCanvas);
+    ctx.beginPath();
+    // ctx.fillStyle = '#FFFF00';
+    // ctx.fillRect(0,0,textCanvas.width,textCanvas.height);
+    const gradient = ctx.createLinearGradient(0, 0, textCanvas.width, 0);
+    gradient.addColorStop(0, "#ea5041");
+    gradient.addColorStop(1, "#1c2068");
+    ctx.fillStyle = gradient;
+    ctx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
+    ctx.stroke();
+    // Setup geometry
+    const x = canvas2d.width;
+    const y = canvas2d.height;
+    const length = textCanvas.width;
+    const width = textCanvas.height;
+    const scale = resolution * sizeFactor;
+    typeTwister = new TypeTwister(x, y, length, width, scale);
+    console.log('resize');
+}
+
+class TypeTwister {
+    length;
+    width;
+    halfWidth;
+    segmentsCount;
+    segments;
+    points;
+    tris;
+    trisToDraw;
+    debugPoints;
+    limit;
+    constructor(x, y, length, width, scale) {
+        if (scale === undefined) scale = 1;
+        this.length = length * scale;
+        this.width = width * scale;
+        this.halfWidth = width / 2 * scale;
+        const segmentWidth = isMobileDevice() ? 20 : 10;
+        this.segmentsCount = Math.floor(this.length / segmentWidth / scale);
+        this.segmentWidth = this.length/this.segmentsCount;
+        this.limit = this.segmentWidth / width / scale * 2;
+        this.segments = [];
+        this.points = [];
+        this.tris = [];
+        this.trisToDraw = [];
+        this.debugPoints = [];
+        for (let i = 0; i < this.segmentsCount; i++) {
+            this.segments.push(new Link(x + i * this.segmentWidth, y));
+            this.points.push(new Point(), new Point());
+        }
+        this.points.every((p, i) => {
+            const step = 1/(this.segmentsCount - 1);
+            const offset = step * Math.floor(i / 2);
+            const tri = new Triangle(p, this.points[i + 2], this.points[i + 1]);
+            if (i % 2) {
+                tri.uv0.x = offset;
+                tri.uv0.y = 1;
+                tri.uv1.x = offset + step;
+                tri.uv1.y = 1;
+                tri.uv2.x = offset + step;
+                tri.uv2.y = 0;
+            } else {
+                tri.uv0.x = offset;
+                tri.uv0.y = 0;
+                tri.uv1.x = offset + step;
+                tri.uv1.y = 0;
+                tri.uv2.x = offset;
+                tri.uv2.y = 1;
+            }
+            this.tris.push(tri);
+            return i < this.points.length - 3;
+        });
+    }
+}
 
 const updateFrame = () => {
     stats.begin();
@@ -106,11 +156,11 @@ const updateFrame = () => {
 
 const updateGeometry = () => {
     // We do not update geometry if it's not changed
-    const dx = (targetPoint.x - links[0].x);
-    const dy = (targetPoint.y - links[0].y);
+    const dx = (targetPoint.x - typeTwister.segments[0].x);
+    const dy = (targetPoint.y - typeTwister.segments[0].y);
     if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
-    // Update links
-    links.forEach((link, i) => {
+    // Update segments
+    typeTwister.segments.forEach((link, i) => {
         if (i === 0) {
             const d = Math.sqrt(dx * dx + dy * dy);
             const max_speed = 300 * sizeFactor;
@@ -124,49 +174,49 @@ const updateGeometry = () => {
             link.x += k * d * Math.cos(link.a) / speed_dump;
             link.y += k * d * Math.sin(link.a) / speed_dump;
         } else {
-            const prev = links[i - 1];
+            const prev = typeTwister.segments[i - 1];
             const a = Math.atan2(prev.y - link.y, prev.x - link.x);
             if (i === 1) {
                 link.a = a;
             } else {
                 const d = deltaAngle(a, prev.a);
-                const rd = Math.min(limit, Math.abs(d));
+                const rd = Math.min(typeTwister.limit, Math.abs(d));
                 if (d > 0) {
                     link.a = prev.a - rd;
                 } else {
                     link.a = prev.a + rd;
                 }
             }
-            link.x = prev.x - distance * Math.cos(link.a);
-            link.y = prev.y - distance * Math.sin(link.a);
+            link.x = prev.x - typeTwister.segmentWidth * Math.cos(link.a);
+            link.y = prev.y - typeTwister.segmentWidth * Math.sin(link.a);
         }
-        if (i < links.length - 1) {
-            tris[2 * i].a = link.a + Math.PI / 2;
-            tris[2 * i + 1].a = link.a - Math.PI / 2;
+        if (i < typeTwister.segments.length - 1) {
+            typeTwister.tris[2 * i].a = link.a + Math.PI / 2;
+            typeTwister.tris[2 * i + 1].a = link.a - Math.PI / 2;
         }
     });
     // Update points
-    links.forEach((link, i) => {
+    typeTwister.segments.forEach((link, i) => {
         let a;
         if (i === 0) {
-            a = links[i + 1].a;
-        } else if (i === links.length - 1) {
+            a = typeTwister.segments[i + 1].a;
+        } else if (i === typeTwister.segments.length - 1) {
             a = link.a;
         } else {
-            a = links[i + 1].a + deltaAngle(links[i + 1].a, link.a) / 2;
+            a = typeTwister.segments[i + 1].a + deltaAngle(typeTwister.segments[i + 1].a, link.a) / 2;
         }
         a += Math.PI / 2;
-        let p = points[2 * i];
-        p.x = link.x + halfWidth * Math.cos(a);
-        p.y = link.y + halfWidth * Math.sin(a);
-        p = points[2 * i + 1];
-        p.x = link.x - halfWidth * Math.cos(a);
-        p.y = link.y - halfWidth * Math.sin(a);
+        let p = typeTwister.points[2 * i];
+        p.x = link.x + typeTwister.halfWidth * Math.cos(a);
+        p.y = link.y + typeTwister.halfWidth * Math.sin(a);
+        p = typeTwister.points[2 * i + 1];
+        p.x = link.x - typeTwister.halfWidth * Math.cos(a);
+        p.y = link.y - typeTwister.halfWidth * Math.sin(a);
     });
     // Update triangles optimized
-    trisToDraw.length = 0;
-    debugPoints.length = 0;
-    tris.forEach((tri, i) => {
+    typeTwister.trisToDraw.length = 0;
+    typeTwister.debugPoints.length = 0;
+    typeTwister.tris.forEach((tri, i) => {
         const p0 = tri.p0;
         const p1 = tri.p1;
         const p2 = tri.p2;
@@ -177,21 +227,22 @@ const updateGeometry = () => {
         if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
         // Further geometry optimisation is possible…
         // …here
-        trisToDraw.unshift(tri);
+        typeTwister.trisToDraw.unshift(tri);
     });
     return true;
 };
 
 const renderFrame = () => {
     ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
-    trisToDraw.forEach((tri, i) => {
-        drawTriangle(ctx, img, tri.p0.x, tri.p0.y,
+    typeTwister.trisToDraw.forEach((tri, i) => {
+        drawTriangle(ctx, textCanvas, tri.p0.x, tri.p0.y,
             tri.p1.x, tri.p1.y, 
             tri.p2.x, tri.p2.y, 
-            tri.uv0.x * img.width, tri.uv0.y * img.height, 
-            tri.uv1.x * img.width, tri.uv1.y * img.height, 
-            tri.uv2.x * img.width, tri.uv2.y * img.height);
+            tri.uv0.x * textCanvas.width, tri.uv0.y * textCanvas.height, 
+            tri.uv1.x * textCanvas.width, tri.uv1.y * textCanvas.height, 
+            tri.uv2.x * textCanvas.width, tri.uv2.y * textCanvas.height);
     });
+    // drawWireframe();
 };
 
 //by Andrew Poes
@@ -237,9 +288,8 @@ const drawTriangle = (ctx, img, x0, y0, x1, y1, x2, y2,
     ctx.drawImage(img, 0, 0, img.width, img.height);
     ctx.restore();
 };
-
-const drawTris = () => {
-    trisToDraw.forEach((tri, i) => {
+const drawWireframe = () => {
+    typeTwister.trisToDraw.forEach((tri, i) => {
         ctx.strokeStyle = '#000';
         ctx.beginPath();
         tri.original.forEach((p, j) => {
@@ -320,7 +370,12 @@ class Triangle {
 
 //All starts here when DOM is ready
 document.addEventListener("DOMContentLoaded", (event) => {
-    img = new Image();
-    img.onload = initScene;
-    img.src="./typography.png";
+    //Wait for the font loaded, then go
+    FontFaceOnload('NeueMachina', {
+        success: () => {
+            initScene('NeueMachina');
+        },
+        error: initScene,
+        timeout: 1000
+    });
 });
