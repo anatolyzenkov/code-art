@@ -26,7 +26,7 @@ const initScene = () => {
     length = img.width * sizeFactor * resolution;
     width = img.height * sizeFactor * resolution;
     halfWidth = width/2;
-    distance = 10 * sizeFactor * resolution;
+    distance = 10 * sizeFactor * resolution * (isMobileDevice() ? 1.5 : 1);
     limit = distance / width * 2;
     linksCount = length / distance;
     // Add Stats
@@ -105,7 +105,7 @@ const updateFrame = () => {
 };
 
 const updateGeometry = () => {
-    // Do not update if not changed
+    // We do not update geometry if it's not changed
     const dx = (targetPoint.x - links[0].x);
     const dy = (targetPoint.y - links[0].y);
     if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
@@ -177,16 +177,6 @@ const updateGeometry = () => {
         if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
         // Further geometry optimisation is possible…
         // …here
-        // Gradient calculation for triangle
-        const p0p1 = new Point(p1.x - p0.x, p1.y - p0.y);
-        const p0p2 = new Point(p2.x - p0.x, p2.y - p0.y);
-        const dq = p0p2.x * p0p2.x + p0p2.y * p0p2.y;
-        const dot = p0p1.x * p0p2.x + p0p1.y * p0p2.y
-        const t = dot / dq;
-        const px = p0.x + p0p2.x * t;
-        const py = p0.y + p0p2.y * t;
-        const j = Math.floor(i / 2);
-        tri.pattern = ctx.createPattern(img, 'no-repeat');
         trisToDraw.unshift(tri);
     });
     return true;
@@ -206,10 +196,9 @@ const renderFrame = () => {
 
 //by Andrew Poes
 //http://jsfiddle.net/mrbendel/6rbtde5t/1/
-var drawTriangle = function(ctx, im, x0, y0, x1, y1, x2, y2,
-    sx0, sy0, sx1, sy1, sx2, sy2) {
+const drawTriangle = (ctx, img, x0, y0, x1, y1, x2, y2,
+    sx0, sy0, sx1, sy1, sx2, sy2) => {
     ctx.save();
-
     // Clip the output to the on-screen triangle boundaries.
     ctx.beginPath();
     ctx.moveTo(x0, y0);
@@ -217,24 +206,35 @@ var drawTriangle = function(ctx, im, x0, y0, x1, y1, x2, y2,
     ctx.lineTo(x2, y2);
     ctx.closePath();
     ctx.clip();
-
     // TODO: eliminate common subexpressions.
-    var denom = sx0 * (sy2 - sy1) - sx1 * sy2 + sx2 * sy1 + (sx1 - sx2) * sy0;
-    if (denom == 0) {
-        return;
-    }
-    var m11 = -(sy0 * (x2 - x1) - sy1 * x2 + sy2 * x1 + (sy1 - sy2) * x0) / denom;
-    var m12 = (sy1 * y2 + sy0 * (y1 - y2) - sy2 * y1 + (sy2 - sy1) * y0) / denom;
-    var m21 = (sx0 * (x2 - x1) - sx1 * x2 + sx2 * x1 + (sx1 - sx2) * x0) / denom;
-    var m22 = -(sx1 * y2 + sx0 * (y1 - y2) - sx2 * y1 + (sx2 - sx1) * y0) / denom;
-    var dx = (sx0 * (sy2 * x1 - sy1 * x2) + sy0 * (sx1 * x2 - sx2 * x1) + (sx2 * sy1 - sx1 * sy2) * x0) / denom;
-    var dy = (sx0 * (sy2 * y1 - sy1 * y2) + sy0 * (sx1 * y2 - sx2 * y1) + (sx2 * sy1 - sx1 * sy2) * y0) / denom;
+    const a = sx2 * sy1;
+    const b = sx1 * sy2;
+    const c = sy2 - sy1;
+    const d = sx1 - sx2;
+    const denom = sx0 * c - b + a + d * sy0;
+    if (denom == 0) return;
+    const e = x2 - x1;
+    const f = y1 - y2;
+    const g = sy1 * x2;
+    const h = sy2 * x1;
+    const i = sy1 * y2;
+    const j = sx1 * x2;
+    const k = sx1 * y2;
+    const l = sy2 * y1;
+    const m = sx2 * x1;
+    const n = sx2 * y1;
+    const pDenom = 1 / denom;
+    const m11 = -(sy0 * e - g + h + (sy1 - sy2) * x0) * pDenom;
+    const m12 = (i + sy0 * f - l + c * y0) * pDenom;
+    const m21 = (sx0 * e - j + m + d * x0) * pDenom;
+    const m22 = -(k + sx0 * f - n + (sx2 - sx1) * y0) * pDenom;
+    const dx = (sx0 * (h - g) + sy0 * (j - m) + (a - b) * x0) * pDenom;
+    const dy = (sx0 * (l - i) + sy0 * (k - n) + (a - b) * y0) * pDenom;
 
     ctx.transform(m11, m12, m21, m22, dx, dy);
-
     // TODO: figure out if drawImage goes faster if we specify the rectangle that
     // bounds the source coords.
-    ctx.drawImage(im, 0, 0);
+    ctx.drawImage(img, 0, 0, img.width, img.height);
     ctx.restore();
 };
 
