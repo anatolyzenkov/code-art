@@ -79,7 +79,7 @@
         </header>
       </div>
       <div class="section-group">
-        <section class="section light">
+        <section class="section light link">
           <style>
             .type-twister-background {
               background-image: url(/m/codrt/type-twister/type-twister-v1-s.jpg);
@@ -109,7 +109,7 @@
         </section>
       </div>
       <div class="section-group">
-        <section class="section light">
+        <section class="section light link">
           <style>
             .wet-paint-background {
               background-image: url(/m/codrt/wet-paint/wet-paint-v1-s.jpg);
@@ -139,7 +139,7 @@
         </section>
       </div>
       <div class="section-group">
-        <section class="section light">
+        <section class="section light link">
           <style>
             .soft-ice-background {
               background-image: url(/m/codrt/soft-ice/soft-ice-s.jpg);
@@ -168,5 +168,12 @@
           </div>
         </section>
       </div>
+      <script>
+        [...document.getElementsByClassName('section link')].forEach((section) => {
+          if (section.getElementsByTagName('a').length === 1) {
+            section.addEventListener('click', () => window.location.href = section.getElementsByTagName('a')[0].href);
+          }
+        });
+      </script>
   </body>
 </html>
