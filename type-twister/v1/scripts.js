@@ -10,8 +10,7 @@ let sizeFactor
 let fontName = 'sans-serif';
 let textCanvas;
 let typeTwister;
-let text = 'Read my lips: no new taxes';
-
+let text = 'Read my lips';
 
 const initScene = (fntName) => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -63,14 +62,10 @@ const setupObjects = (text) => {
     ctx.textBaseline = 'top';
     let textMetrics = ctx.measureText(text.toUpperCase());
     textCanvas.width = textMetrics.width;
-    textCanvas.height = textMetrics.fontBoundingBoxDescent;// - textMetrics,fontBoundingBoxAscent;
-    // console.log(textMetrics);
+    textCanvas.height = textMetrics.actualBoundingBoxDescent + textMetrics.actualBoundingBoxAscent;
     ctx.font = font;
     ctx.textBaseline = 'top';
-    // document.body.appendChild(textCanvas);
     ctx.beginPath();
-    // ctx.fillStyle = '#FFFF00';
-    // ctx.fillRect(0,0,textCanvas.width,textCanvas.height);
     const gradient = ctx.createLinearGradient(0, 0, textCanvas.width, 0);
     gradient.addColorStop(0, "#ea5041");
     gradient.addColorStop(1, "#1c2068");
@@ -84,60 +79,147 @@ const setupObjects = (text) => {
     const width = textCanvas.height;
     const scale = resolution * sizeFactor;
     typeTwister = new TypeTwister(x, y, length, width, scale);
-    console.log('resize');
 }
 
 class TypeTwister {
     length;
     width;
     halfWidth;
-    segmentsCount;
+    xSegmentCount;
+    ySegmentCount;
     segments;
     points;
     tris;
     trisToDraw;
     debugPoints;
     limit;
+    scale
     constructor(x, y, length, width, scale) {
         if (scale === undefined) scale = 1;
+        this.scale = scale;
         this.length = length * scale;
         this.width = width * scale;
         this.halfWidth = width / 2 * scale;
-        const segmentWidth = isMobileDevice() ? 20 : 10;
-        this.segmentsCount = Math.floor(this.length / segmentWidth / scale);
-        this.segmentWidth = this.length/this.segmentsCount;
-        this.limit = this.segmentWidth / width / scale * 2;
+        const xSegmentWidth = isMobileDevice() ? 60 : 40;
+        this.xSegmentCount = Math.floor(this.length / xSegmentWidth / scale);
+        this.xSegmentWidth = this.length/this.xSegmentCount;
+        this.ySegmentCount = Math.round(this.width/this.xSegmentWidth);
+        this.limit = this.xSegmentWidth / width / scale * 1.6;
         this.segments = [];
         this.points = [];
         this.tris = [];
         this.trisToDraw = [];
         this.debugPoints = [];
-        for (let i = 0; i < this.segmentsCount; i++) {
-            this.segments.push(new Link(x + i * this.segmentWidth, y));
-            this.points.push(new Point(), new Point());
-        }
-        this.points.every((p, i) => {
-            const step = 1/(this.segmentsCount - 1);
-            const offset = step * Math.floor(i / 2);
-            const tri = new Triangle(p, this.points[i + 2], this.points[i + 1]);
-            if (i % 2) {
-                tri.uv0.x = offset;
-                tri.uv0.y = 1;
-                tri.uv1.x = offset + step;
-                tri.uv1.y = 1;
-                tri.uv2.x = offset + step;
-                tri.uv2.y = 0;
-            } else {
-                tri.uv0.x = offset;
-                tri.uv0.y = 0;
-                tri.uv1.x = offset + step;
-                tri.uv1.y = 0;
-                tri.uv2.x = offset;
-                tri.uv2.y = 1;
+        for (let i = 0; i < this.xSegmentCount; i++) {
+            this.segments.push(new Segment(x + i * this.xSegmentWidth, y));
+            for (let j = 0; j < this.ySegmentCount; j++) {
+                this.points.push(new Point());
             }
-            this.tris.push(tri);
-            return i < this.points.length - 3;
+        }
+        const stepX = 1/(this.xSegmentCount - 1);
+        const stepY = 1/(this.ySegmentCount - 1);
+        this.segments.forEach((s,i) => {
+            if (i === this.segments.length - 1) return;
+            const offsetX = stepX * i;
+            for (let j = 0; j < this.ySegmentCount - 1; j++) {
+                const offsetY = stepY * j;
+                const tri0 = new Triangle(
+                    this.points[i * this.ySegmentCount + j],
+                    this.points[i * this.ySegmentCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentCount + j]
+                );
+                tri0.uv0 = new Point(offsetX, offsetY);
+                tri0.uv1 = new Point(offsetX, offsetY + stepY);
+                tri0.uv2 = new Point(offsetX + stepX, offsetY);
+                this.tris.push(tri0);
+                const tri1 = new Triangle(
+                    this.points[i * this.ySegmentCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentCount + j],
+                );
+                tri1.uv0 = new Point(offsetX, offsetY + stepY);
+                tri1.uv1 = new Point(offsetX + stepX, offsetY + stepY);
+                tri1.uv2 = new Point(offsetX + stepX, offsetY);
+                this.tris.push(tri1);
+            }
         });
+        this.updateGeometry = (targetX, targetY) => {
+            // We do not update geometry if it's not changed
+            const dx = (targetX - this.segments[0].x);
+            const dy = (targetY - this.segments[0].y);
+            if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
+            // Update segments
+            this.segments.forEach((link, i) => {
+                if (i === 0) {
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    const max_speed = 300 * this.scale;
+                    const speed_dump = 10 * this.scale;
+                    
+                    const k = Math.min(max_speed, d)/d;
+                    const ta = Math.atan2(dy, dx);
+                    const da = deltaAngle(link.a, ta);
+                    
+                    link.a = ta - da * 0.8;
+                    link.x += k * d * Math.cos(link.a) / speed_dump;
+                    link.y += k * d * Math.sin(link.a) / speed_dump;
+                } else {
+                    const prev = this.segments[i - 1];
+                    const a = Math.atan2(prev.y - link.y, prev.x - link.x);
+                    if (i === 1) {
+                        link.a = a;
+                    } else {
+                        const d = deltaAngle(a, prev.a);
+                        const rd = Math.min(this.limit, Math.abs(d));
+                        if (d > 0) {
+                            link.a = prev.a - rd;
+                        } else {
+                            link.a = prev.a + rd;
+                        }
+                    }
+                    link.x = prev.x - this.xSegmentWidth * Math.cos(link.a);
+                    link.y = prev.y - this.xSegmentWidth * Math.sin(link.a);
+                }
+                if (i < this.segments.length - 1) {
+                    this.tris[2 * i].a = link.a + Math.PI / 2;
+                    this.tris[2 * i + 1].a = link.a - Math.PI / 2;
+                }
+            });
+            // Update points
+            this.segments.forEach((link, i) => {
+                let a;
+                if (i === 0) {
+                    a = this.segments[i + 1].a;
+                } else if (i === this.segments.length - 1) {
+                    a = link.a;
+                } else {
+                    a = this.segments[i + 1].a + deltaAngle(this.segments[i + 1].a, link.a) / 2;
+                }
+                a += Math.PI / 2;
+                for (let j = 0; j < this.ySegmentCount; j ++) {
+                    const p = this.points[this.ySegmentCount * i + j];
+                    const d = this.halfWidth - j * this.width / (this.ySegmentCount-1);
+                    p.x = link.x + d * Math.cos(a);
+                    p.y = link.y + d * Math.sin(a);
+                }
+            });
+            // Update triangles optimized
+            this.trisToDraw.length = 0;
+            this.debugPoints.length = 0;
+            this.tris.forEach((tri, i) => {
+                const p0 = tri.p0;
+                const p1 = tri.p1;
+                const p2 = tri.p2;
+                // Triangle on screen test
+                if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
+                if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
+                if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
+                if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
+                // Further geometry optimisation is possible…
+                // …here
+                this.trisToDraw.unshift(tri);
+            });
+            return true;
+        }
     }
 }
 
@@ -146,90 +228,12 @@ const updateFrame = () => {
     motions.update();
     targetPoint.x = motions.x * resolution;
     targetPoint.y = motions.y * resolution;
-    const geometryChanged = updateGeometry();
+    const geometryChanged = typeTwister.updateGeometry(targetPoint.x, targetPoint.y);
     if (geometryChanged) {
         renderFrame();
     }
     stats.end();
     requestAnimationFrame(updateFrame);
-};
-
-const updateGeometry = () => {
-    // We do not update geometry if it's not changed
-    const dx = (targetPoint.x - typeTwister.segments[0].x);
-    const dy = (targetPoint.y - typeTwister.segments[0].y);
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
-    // Update segments
-    typeTwister.segments.forEach((link, i) => {
-        if (i === 0) {
-            const d = Math.sqrt(dx * dx + dy * dy);
-            const max_speed = 300 * sizeFactor;
-            const speed_dump = 10 * sizeFactor;
-            
-            const k = Math.min(max_speed, d)/d;
-            const ta = Math.atan2(dy, dx);
-            const da = deltaAngle(link.a, ta);
-            
-            link.a = ta - da * 0.8;
-            link.x += k * d * Math.cos(link.a) / speed_dump;
-            link.y += k * d * Math.sin(link.a) / speed_dump;
-        } else {
-            const prev = typeTwister.segments[i - 1];
-            const a = Math.atan2(prev.y - link.y, prev.x - link.x);
-            if (i === 1) {
-                link.a = a;
-            } else {
-                const d = deltaAngle(a, prev.a);
-                const rd = Math.min(typeTwister.limit, Math.abs(d));
-                if (d > 0) {
-                    link.a = prev.a - rd;
-                } else {
-                    link.a = prev.a + rd;
-                }
-            }
-            link.x = prev.x - typeTwister.segmentWidth * Math.cos(link.a);
-            link.y = prev.y - typeTwister.segmentWidth * Math.sin(link.a);
-        }
-        if (i < typeTwister.segments.length - 1) {
-            typeTwister.tris[2 * i].a = link.a + Math.PI / 2;
-            typeTwister.tris[2 * i + 1].a = link.a - Math.PI / 2;
-        }
-    });
-    // Update points
-    typeTwister.segments.forEach((link, i) => {
-        let a;
-        if (i === 0) {
-            a = typeTwister.segments[i + 1].a;
-        } else if (i === typeTwister.segments.length - 1) {
-            a = link.a;
-        } else {
-            a = typeTwister.segments[i + 1].a + deltaAngle(typeTwister.segments[i + 1].a, link.a) / 2;
-        }
-        a += Math.PI / 2;
-        let p = typeTwister.points[2 * i];
-        p.x = link.x + typeTwister.halfWidth * Math.cos(a);
-        p.y = link.y + typeTwister.halfWidth * Math.sin(a);
-        p = typeTwister.points[2 * i + 1];
-        p.x = link.x - typeTwister.halfWidth * Math.cos(a);
-        p.y = link.y - typeTwister.halfWidth * Math.sin(a);
-    });
-    // Update triangles optimized
-    typeTwister.trisToDraw.length = 0;
-    typeTwister.debugPoints.length = 0;
-    typeTwister.tris.forEach((tri, i) => {
-        const p0 = tri.p0;
-        const p1 = tri.p1;
-        const p2 = tri.p2;
-        // Triangle on screen test
-        if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
-        if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
-        if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
-        if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
-        // Further geometry optimisation is possible…
-        // …here
-        typeTwister.trisToDraw.unshift(tri);
-    });
-    return true;
 };
 
 const renderFrame = () => {
@@ -243,6 +247,7 @@ const renderFrame = () => {
             tri.uv2.x * textCanvas.width, tri.uv2.y * textCanvas.height);
     });
     // drawWireframe();
+    // drawPoints();
 };
 
 //by Andrew Poes
@@ -250,20 +255,21 @@ const renderFrame = () => {
 const drawTriangle = (ctx, img, x0, y0, x1, y1, x2, y2,
     sx0, sy0, sx1, sy1, sx2, sy2) => {
     ctx.save();
-    // Clip the output to the on-screen triangle boundaries.
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.closePath();
     ctx.clip();
-    // TODO: eliminate common subexpressions.
     const a = sx2 * sy1;
     const b = sx1 * sy2;
     const c = sy2 - sy1;
     const d = sx1 - sx2;
     const denom = sx0 * c - b + a + d * sy0;
-    if (denom == 0) return;
+    if (denom == 0) {
+        ctx.restore();
+        return;
+    }
     const e = x2 - x1;
     const f = y1 - y2;
     const g = sy1 * x2;
@@ -281,7 +287,6 @@ const drawTriangle = (ctx, img, x0, y0, x1, y1, x2, y2,
     const m22 = -(k + sx0 * f - n + (sx2 - sx1) * y0) * pDenom;
     const dx = (sx0 * (h - g) + sy0 * (j - m) + (a - b) * x0) * pDenom;
     const dy = (sx0 * (l - i) + sy0 * (k - n) + (a - b) * y0) * pDenom;
-
     ctx.transform(m11, m12, m21, m22, dx, dy);
     // TODO: figure out if drawImage goes faster if we specify the rectangle that
     // bounds the source coords.
@@ -307,7 +312,7 @@ const drawPoints = (points, connect) => {
     let x, y;
     ctx.fillStyle = '#FFFFFF80';
     ctx.strokeStyle = '#FFF';
-    points.forEach(link => {
+    typeTwister.points.forEach(link => {
         ctx.beginPath();
         ctx.arc(link.x, link.y, 6, 0, 2 * Math.PI);
         ctx.closePath();
@@ -329,7 +334,7 @@ const drawTarget = () => {
     ctx.fill();
 }
 
-class Link extends Point {
+class Segment extends Point {
     a;
     constructor(x, y) {
         super(x, y);
