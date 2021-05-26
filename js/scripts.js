@@ -78,6 +78,9 @@ class Point {
     magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
+    static clone(p) {
+        return new Point(p.x, p.y);
+    }
     static summ(p0, p1) {
         return new Point(p0.x + p1.x, p0.y + p1.y);
     }
