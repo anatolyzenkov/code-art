@@ -59,7 +59,7 @@ const setupObjects = (text) => {
     // Setup text
     if (mapCanvas === undefined) mapCanvas = getCanvas(200, 200);
     mapCtx = mapCanvas.getContext('2d');
-    const fontSize = isMobileDevice() ? 240 : 360;
+    const fontSize = isMobileDevice() ? 280 : 360;
     const font = '900 ' + (fontSize * resolution) + 'px ' + fontName;
     mapCtx.font = font;
     mapCtx.textBaseline = 'top';
@@ -288,7 +288,6 @@ const updateFrame = () => {
     const geometryChanged = typeTwister.updateGeometry(targetPoint.x, targetPoint.y);
     if (geometryChanged) {
         //renderFrame();
-        //see function above for the flow understanding
         renderFrameOptimized();
         // drawWireframe();
         // drawPoints();
@@ -477,12 +476,7 @@ class Triangle {
 
 //All starts here when DOM is ready
 document.addEventListener("DOMContentLoaded", (event) => {
-    //Wait for the font loaded, then go
-    FontFaceOnload('NeueMachina', {
-        success: () => {
-            initScene('NeueMachina');
-        },
-        error: initScene,
-        timeout: 1000
+    document.fonts.ready.then(() => {
+        initScene('NeueMachina');
     });
 });
