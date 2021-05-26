@@ -8,7 +8,8 @@ let stats;
 let motions;
 let sizeFactor
 let fontName = 'sans-serif';
-let textCanvas;
+let mapCanvas;
+let mapCtx;
 let typeTwister;
 let text;
 
@@ -56,29 +57,29 @@ const initScene = (fntName) => {
 const setupObjects = (text) => {
     sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
     // Setup text
-    if (textCanvas === undefined) textCanvas = getCanvas(200, 200);
-    const ctx = textCanvas.getContext('2d');
+    if (mapCanvas === undefined) mapCanvas = getCanvas(200, 200);
+    mapCtx = mapCanvas.getContext('2d');
     const fontSize = isMobileDevice() ? 240 : 360;
     const font = '900 ' + (fontSize * resolution) + 'px ' + fontName;
-    ctx.font = font;
-    ctx.textBaseline = 'top';
-    let textMetrics = ctx.measureText(text.toUpperCase());
-    textCanvas.width = textMetrics.width;
-    textCanvas.height = textMetrics.actualBoundingBoxDescent + textMetrics.actualBoundingBoxAscent;
-    ctx.font = font;
-    ctx.textBaseline = 'top';
-    ctx.beginPath();
-    const gradient = ctx.createLinearGradient(0, 0, textCanvas.width, 0);
+    mapCtx.font = font;
+    mapCtx.textBaseline = 'top';
+    let textMetrics = mapCtx.measureText(text.toUpperCase());
+    mapCanvas.width = textMetrics.width;
+    mapCanvas.height = textMetrics.actualBoundingBoxDescent + textMetrics.actualBoundingBoxAscent;
+    mapCtx.font = font;
+    mapCtx.textBaseline = 'top';
+    mapCtx.beginPath();
+    const gradient = mapCtx.createLinearGradient(0, 0, mapCanvas.width, 0);
     gradient.addColorStop(0, "#ea5041");
     gradient.addColorStop(1, "#1c2068");
-    ctx.fillStyle = gradient;
-    ctx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
-    ctx.stroke();
+    mapCtx.fillStyle = gradient;
+    mapCtx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
+    mapCtx.stroke();
     // Setup geometry
     const x = canvas2d.width;
     const y = canvas2d.height;
-    const length = textCanvas.width;
-    const width = textCanvas.height;
+    const length = mapCanvas.width;
+    const width = mapCanvas.height;
     const scale = sizeFactor;
     typeTwister = new TypeTwister(x, y, length, width, scale);
 }
@@ -95,7 +96,8 @@ class TypeTwister {
     trisToDraw;
     debugPoints;
     limit;
-    scale
+    scale;
+    checkedTris;
     constructor(x, y, length, width, scale) {
         if (scale === undefined) scale = 1;
         this.scale = scale;
@@ -145,16 +147,17 @@ class TypeTwister {
                 this.tris.push(tri1);
             }
         });
+        this.checkedTris = 0;
         this.tris.forEach(tri => {
             tri.uv0Optimized = Point.clone(tri.uv0);
-            tri.uv0Optimized.x *= textCanvas.width;
-            tri.uv0Optimized.y *= textCanvas.height;
+            tri.uv0Optimized.x *= mapCanvas.width;
+            tri.uv0Optimized.y *= mapCanvas.height;
             tri.uv1Optimized = Point.clone(tri.uv1);
-            tri.uv1Optimized.x *= textCanvas.width;
-            tri.uv1Optimized.y *= textCanvas.height;
+            tri.uv1Optimized.x *= mapCanvas.width;
+            tri.uv1Optimized.y *= mapCanvas.height;
             tri.uv2Optimized = Point.clone(tri.uv2);
-            tri.uv2Optimized.x *= textCanvas.width;
-            tri.uv2Optimized.y *= textCanvas.height;
+            tri.uv2Optimized.x *= mapCanvas.width;
+            tri.uv2Optimized.y *= mapCanvas.height;
         });
         this.updateGeometry = (targetX, targetY) => {
             // We do not update geometry if it's not changed
@@ -215,6 +218,14 @@ class TypeTwister {
                     p.y = link.y + d * Math.sin(a);
                 }
             });
+            // Permanently kick out fully transparent tris
+            if (this.checkedTris < this.tris.length) {
+                for (let i = 0; i < 10; i++) {
+                    if (this.checkedTris == this.tris.length) break;
+                    testTransparency(this.tris[this.checkedTris], 1 - this.checkedTris % 2);
+                    this.checkedTris ++;
+                }
+            }
             // Update triangles optimized
             this.trisToDraw.length = 0;
             this.debugPoints.length = 0;
@@ -222,6 +233,8 @@ class TypeTwister {
                 const p0 = tri.p0;
                 const p1 = tri.p1;
                 const p2 = tri.p2;
+                // No transparent tris
+                if (tri.invisible) return;
                 // Triangle on screen test
                 if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
                 if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
@@ -234,6 +247,37 @@ class TypeTwister {
             return true;
         }
     }
+}
+
+const testTransparency = (tri, even) => {
+    let x1, y0;
+    let x0 = tri.uv0Optimized.x;
+    let y1 = tri.uv1Optimized.y;
+    if (even) {
+        x1 = tri.uv2Optimized.x;
+        y0 = tri.uv0Optimized.y;
+    } else {
+        x1 = tri.uv1Optimized.x;
+        y0 = tri.uv2Optimized.y;
+    }
+    const width = Math.floor(x1 - x0);
+    const height = Math.floor(y1 - y0);
+    const imgData = mapCtx.getImageData(x0, y0, width, height);
+    for (let y = 0; y < height; y++) {
+        const edge = (1 - y / height) * width;
+        for (let x = 0; x < width; x++) {
+            if (even) {
+                if (x > edge) break;
+            } else {
+                if (x <= edge) continue;
+            }
+            if (imgData.data[4 * (y * width + x) + 3] > 0) {
+                tri.invisible = false;
+                return;
+            }
+        }
+    }
+    tri.invisible = true;
 }
 
 const updateFrame = () => {
@@ -291,7 +335,7 @@ const renderFrameOptimized = () => {
         dx = (tri.uv0Optimized.x * (h - g) + tri.uv0Optimized.y * (j - m) + (a - b) * tri.p0.x) * pDenom;
         dy = (tri.uv0Optimized.x * (l - i) + tri.uv0Optimized.y * (k - n) + (a - b) * tri.p0.y) * pDenom;
         ctx.transform(m11, m12, m21, m22, dx, dy);
-        ctx.drawImage(textCanvas, 0, 0, textCanvas.width, textCanvas.height);
+        ctx.drawImage(mapCanvas, 0, 0, mapCanvas.width, mapCanvas.height);
         ctx.restore();
     });
 };
@@ -299,12 +343,12 @@ const renderFrameOptimized = () => {
 const renderFrame = () => {
     ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
     typeTwister.trisToDraw.forEach((tri, i) => {
-        drawTriangle(ctx, textCanvas, tri.p0.x, tri.p0.y,
+        drawTriangle(ctx, mapCanvas, tri.p0.x, tri.p0.y,
             tri.p1.x, tri.p1.y, 
             tri.p2.x, tri.p2.y, 
-            tri.uv0.x * textCanvas.width, tri.uv0.y * textCanvas.height, 
-            tri.uv1.x * textCanvas.width, tri.uv1.y * textCanvas.height, 
-            tri.uv2.x * textCanvas.width, tri.uv2.y * textCanvas.height);
+            tri.uv0.x * mapCanvas.width, tri.uv0.y * mapCanvas.height, 
+            tri.uv1.x * mapCanvas.width, tri.uv1.y * mapCanvas.height, 
+            tri.uv2.x * mapCanvas.width, tri.uv2.y * mapCanvas.height);
     });
 };
 
@@ -418,8 +462,7 @@ class Triangle {
     uv1Optimized;
     uv2Optimized;
     original;
-    gradient;
-    pattern;
+    invisible;
     a;
     constructor(p0, p1, p2, uv0, uv1, uv2) {
         this.p0 = p0;
