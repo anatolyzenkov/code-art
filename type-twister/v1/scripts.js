@@ -10,12 +10,14 @@ let sizeFactor
 let fontName = 'sans-serif';
 let textCanvas;
 let typeTwister;
-let text = 'Read my lips';
+let text;
 
 const initScene = (fntName) => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('t') !== null) {
         text = urlParams.get('t');
+    } else {
+        text = isMobileDevice() ? 'Read my lips' : 'Read my lips: no new taxes!';
     }
     fontName = fntName;
     // Add Stats
@@ -57,7 +59,7 @@ const setupObjects = (text) => {
     if (textCanvas === undefined) textCanvas = getCanvas(200, 200);
     const ctx = textCanvas.getContext('2d');
     const fontSize = isMobileDevice() ? 240 : 360;
-    const font = '900 ' + fontSize + 'px ' + fontName;
+    const font = '900 ' + (fontSize * resolution) + 'px ' + fontName;
     ctx.font = font;
     ctx.textBaseline = 'top';
     let textMetrics = ctx.measureText(text.toUpperCase());
@@ -77,7 +79,7 @@ const setupObjects = (text) => {
     const y = canvas2d.height;
     const length = textCanvas.width;
     const width = textCanvas.height;
-    const scale = resolution * sizeFactor;
+    const scale = sizeFactor;
     typeTwister = new TypeTwister(x, y, length, width, scale);
 }
 
@@ -100,11 +102,11 @@ class TypeTwister {
         this.length = length * scale;
         this.width = width * scale;
         this.halfWidth = width / 2 * scale;
-        const xSegmentWidth = isMobileDevice() ? 60 : 40;
+        const xSegmentWidth = isMobileDevice() ? 80 : 60;
         this.xSegmentCount = Math.floor(this.length / xSegmentWidth / scale);
         this.xSegmentWidth = this.length/this.xSegmentCount;
         this.ySegmentCount = Math.round(this.width/this.xSegmentWidth);
-        this.limit = this.xSegmentWidth / width / scale * 1.6;
+        this.limit = this.xSegmentWidth / width / scale * 1.2;
         this.segments = [];
         this.points = [];
         this.tris = [];
@@ -142,6 +144,17 @@ class TypeTwister {
                 tri1.uv2 = new Point(offsetX + stepX, offsetY);
                 this.tris.push(tri1);
             }
+        });
+        this.tris.forEach(tri => {
+            tri.uv0Optimized = Point.clone(tri.uv0);
+            tri.uv0Optimized.x *= textCanvas.width;
+            tri.uv0Optimized.y *= textCanvas.height;
+            tri.uv1Optimized = Point.clone(tri.uv1);
+            tri.uv1Optimized.x *= textCanvas.width;
+            tri.uv1Optimized.y *= textCanvas.height;
+            tri.uv2Optimized = Point.clone(tri.uv2);
+            tri.uv2Optimized.x *= textCanvas.width;
+            tri.uv2Optimized.y *= textCanvas.height;
         });
         this.updateGeometry = (targetX, targetY) => {
             // We do not update geometry if it's not changed
@@ -230,10 +243,57 @@ const updateFrame = () => {
     targetPoint.y = motions.y * resolution;
     const geometryChanged = typeTwister.updateGeometry(targetPoint.x, targetPoint.y);
     if (geometryChanged) {
-        renderFrame();
+        //renderFrame();
+        //see function above for the flow understanding
+        renderFrameOptimized();
+        // drawWireframe();
+        // drawPoints();
     }
     stats.end();
     requestAnimationFrame(updateFrame);
+};
+
+const renderFrameOptimized = () => {
+    ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
+    typeTwister.trisToDraw.forEach(tri => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(tri.p0.x, tri.p0.y);
+        ctx.lineTo(tri.p1.x, tri.p1.y);
+        ctx.lineTo(tri.p2.x, tri.p2.y);
+        ctx.closePath();
+        ctx.clip();
+        let a, b, c, d, e, f, g, h, i, j, k, l, m, n, denom, pDenom, m11, m12, m21, m22, dx, dy;
+        a = tri.uv2Optimized.x * tri.uv1Optimized.y;
+        b = tri.uv1Optimized.x * tri.uv2Optimized.y;
+        c = tri.uv2Optimized.y - tri.uv1Optimized.y;
+        d = tri.uv1Optimized.x - tri.uv2Optimized.x;
+        denom = tri.uv0Optimized.x * c - b + a + d * tri.uv0Optimized.y;
+        if (denom == 0) {
+            ctx.restore();
+            return;
+        }
+        e = tri.p2.x - tri.p1.x;
+        f = tri.p1.y - tri.p2.y;
+        g = tri.uv1Optimized.y * tri.p2.x;
+        h = tri.uv2Optimized.y * tri.p1.x;
+        i = tri.uv1Optimized.y * tri.p2.y;
+        j = tri.uv1Optimized.x * tri.p2.x;
+        k = tri.uv1Optimized.x * tri.p2.y;
+        l = tri.uv2Optimized.y * tri.p1.y;
+        m = tri.uv2Optimized.x * tri.p1.x;
+        n = tri.uv2Optimized.x * tri.p1.y;
+        pDenom = 1 / denom;
+        m11 = -(tri.uv0Optimized.y * e - g + h + (tri.uv1Optimized.y - tri.uv2Optimized.y) * tri.p0.x) * pDenom;
+        m12 = (i + tri.uv0Optimized.y * f - l + c * tri.p0.y) * pDenom;
+        m21 = (tri.uv0Optimized.x * e - j + m + d * tri.p0.x) * pDenom;
+        m22 = -(k + tri.uv0Optimized.x * f - n + (tri.uv2Optimized.x - tri.uv1Optimized.x) * tri.p0.y) * pDenom;
+        dx = (tri.uv0Optimized.x * (h - g) + tri.uv0Optimized.y * (j - m) + (a - b) * tri.p0.x) * pDenom;
+        dy = (tri.uv0Optimized.x * (l - i) + tri.uv0Optimized.y * (k - n) + (a - b) * tri.p0.y) * pDenom;
+        ctx.transform(m11, m12, m21, m22, dx, dy);
+        ctx.drawImage(textCanvas, 0, 0, textCanvas.width, textCanvas.height);
+        ctx.restore();
+    });
 };
 
 const renderFrame = () => {
@@ -246,8 +306,6 @@ const renderFrame = () => {
             tri.uv1.x * textCanvas.width, tri.uv1.y * textCanvas.height, 
             tri.uv2.x * textCanvas.width, tri.uv2.y * textCanvas.height);
     });
-    // drawWireframe();
-    // drawPoints();
 };
 
 //by Andrew Poes
@@ -288,8 +346,6 @@ const drawTriangle = (ctx, img, x0, y0, x1, y1, x2, y2,
     const dx = (sx0 * (h - g) + sy0 * (j - m) + (a - b) * x0) * pDenom;
     const dy = (sx0 * (l - i) + sy0 * (k - n) + (a - b) * y0) * pDenom;
     ctx.transform(m11, m12, m21, m22, dx, dy);
-    // TODO: figure out if drawImage goes faster if we specify the rectangle that
-    // bounds the source coords.
     ctx.drawImage(img, 0, 0, img.width, img.height);
     ctx.restore();
 };
@@ -358,6 +414,9 @@ class Triangle {
     uv0;
     uv1;
     uv2;
+    uv0Optimized;
+    uv1Optimized;
+    uv2Optimized;
     original;
     gradient;
     pattern;
