@@ -113,7 +113,7 @@ const updateGeometry = () => {
     links.forEach((link, i) => {
         if (i === 0) {
             const d = Math.sqrt(dx * dx + dy * dy);
-            const max_speed = 300 * sizeFactor;
+            const max_speed = 200 * sizeFactor;
             const speed_dump = 10 * sizeFactor;
             
             const k = Math.min(max_speed, d)/d;

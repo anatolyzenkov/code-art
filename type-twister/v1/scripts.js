@@ -160,7 +160,7 @@ class TypeTwister {
             tri.uv2Optimized.y *= mapCanvas.height;
         });
         this.updateGeometry = (targetX, targetY) => {
-            // We do not update geometry if it's not changed
+            // We do not update geometry if obect didn't moved.
             const dx = (targetX - this.segments[0].x);
             const dy = (targetY - this.segments[0].y);
             if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
@@ -168,7 +168,7 @@ class TypeTwister {
             this.segments.forEach((link, i) => {
                 if (i === 0) {
                     const d = Math.sqrt(dx * dx + dy * dy);
-                    const max_speed = 300 * this.scale;
+                    const max_speed = 200 * this.scale;
                     const speed_dump = 10 * this.scale;
                     
                     const k = Math.min(max_speed, d)/d;
@@ -279,7 +279,6 @@ const testTransparency = (tri, even) => {
     }
     tri.invisible = true;
 }
-
 const updateFrame = () => {
     stats.begin();
     motions.update();
