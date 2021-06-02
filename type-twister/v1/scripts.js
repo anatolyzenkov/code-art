@@ -88,8 +88,9 @@ class TypeTwister {
     length;
     width;
     halfWidth;
-    xSegmentCount;
-    ySegmentCount;
+    xSegmentsCount;
+    ySegmentsCount;
+    segmentWidth;
     segments;
     points;
     tris;
@@ -104,42 +105,42 @@ class TypeTwister {
         this.length = length * scale;
         this.width = width * scale;
         this.halfWidth = width / 2 * scale;
-        const xSegmentWidth = isMobileDevice() ? 80 : 60;
-        this.xSegmentCount = Math.floor(this.length / xSegmentWidth / scale);
-        this.xSegmentWidth = this.length/this.xSegmentCount;
-        this.ySegmentCount = Math.round(this.width/this.xSegmentWidth);
-        this.limit = this.xSegmentWidth / width / scale * 1.2;
+        const segmentWidth = isMobileDevice() ? 80 : 60;
+        this.xSegmentsCount = Math.floor(this.length / segmentWidth / scale);
+        this.segmentWidth = this.length/this.xSegmentsCount;
+        this.ySegmentsCount = Math.round(this.width/this.segmentWidth);
+        this.limit = this.segmentWidth / width / scale * 1.2;
         this.segments = [];
         this.points = [];
         this.tris = [];
         this.trisToDraw = [];
         this.debugPoints = [];
-        for (let i = 0; i < this.xSegmentCount; i++) {
-            this.segments.push(new Segment(x + i * this.xSegmentWidth, y));
-            for (let j = 0; j < this.ySegmentCount; j++) {
+        for (let i = 0; i < this.xSegmentsCount; i++) {
+            this.segments.push(new Segment(x + i * this.segmentWidth, y));
+            for (let j = 0; j < this.ySegmentsCount; j++) {
                 this.points.push(new Point());
             }
         }
-        const stepX = 1/(this.xSegmentCount - 1);
-        const stepY = 1/(this.ySegmentCount - 1);
+        const stepX = 1/(this.xSegmentsCount - 1);
+        const stepY = 1/(this.ySegmentsCount - 1);
         this.segments.forEach((s,i) => {
             if (i === this.segments.length - 1) return;
             const offsetX = stepX * i;
-            for (let j = 0; j < this.ySegmentCount - 1; j++) {
+            for (let j = 0; j < this.ySegmentsCount - 1; j++) {
                 const offsetY = stepY * j;
                 const tri0 = new Triangle(
-                    this.points[i * this.ySegmentCount + j],
-                    this.points[i * this.ySegmentCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentCount + j]
+                    this.points[i * this.ySegmentsCount + j],
+                    this.points[i * this.ySegmentsCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentsCount + j]
                 );
                 tri0.uv0 = new Point(offsetX, offsetY);
                 tri0.uv1 = new Point(offsetX, offsetY + stepY);
                 tri0.uv2 = new Point(offsetX + stepX, offsetY);
                 this.tris.push(tri0);
                 const tri1 = new Triangle(
-                    this.points[i * this.ySegmentCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentCount + j],
+                    this.points[i * this.ySegmentsCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentsCount + j + 1],
+                    this.points[(i + 1) * this.ySegmentsCount + j],
                 );
                 tri1.uv0 = new Point(offsetX, offsetY + stepY);
                 tri1.uv1 = new Point(offsetX + stepX, offsetY + stepY);
@@ -148,7 +149,9 @@ class TypeTwister {
             }
         });
         this.checkedTris = 0;
-        this.tris.forEach(tri => {
+        const fillRectWidth = mapCanvas.width/this.segments.length + 2;
+        const fillRectHeight = mapCanvas.height/(this.ySegmentsCount - 1) + 2;
+        this.tris.forEach((tri, i) => {
             tri.uv0Optimized = Point.clone(tri.uv0);
             tri.uv0Optimized.x *= mapCanvas.width;
             tri.uv0Optimized.y *= mapCanvas.height;
@@ -158,6 +161,15 @@ class TypeTwister {
             tri.uv2Optimized = Point.clone(tri.uv2);
             tri.uv2Optimized.x *= mapCanvas.width;
             tri.uv2Optimized.y *= mapCanvas.height;
+            if (i % 2 === 0) {
+                tri.fillRect.x = tri.uv0Optimized.x - 1;
+                tri.fillRect.y = tri.uv0Optimized.y - 1;
+            } else {
+                tri.fillRect.x = this.tris[i-1].uv0Optimized.x - 1;
+                tri.fillRect.y = this.tris[i-1].uv0Optimized.y - 1;
+            }
+            tri.fillRect.width = fillRectWidth;
+            tri.fillRect.height = fillRectHeight;
         });
         this.updateGeometry = (targetX, targetY) => {
             // We do not update geometry if obect didn't moved.
@@ -192,8 +204,8 @@ class TypeTwister {
                             link.a = prev.a + rd;
                         }
                     }
-                    link.x = prev.x - this.xSegmentWidth * Math.cos(link.a);
-                    link.y = prev.y - this.xSegmentWidth * Math.sin(link.a);
+                    link.x = prev.x - this.segmentWidth * Math.cos(link.a);
+                    link.y = prev.y - this.segmentWidth * Math.sin(link.a);
                 }
                 if (i < this.segments.length - 1) {
                     this.tris[2 * i].a = link.a + Math.PI / 2;
@@ -211,9 +223,9 @@ class TypeTwister {
                     a = this.segments[i + 1].a + deltaAngle(this.segments[i + 1].a, link.a) / 2;
                 }
                 a += Math.PI / 2;
-                for (let j = 0; j < this.ySegmentCount; j ++) {
-                    const p = this.points[this.ySegmentCount * i + j];
-                    const d = this.halfWidth - j * this.width / (this.ySegmentCount-1);
+                for (let j = 0; j < this.ySegmentsCount; j ++) {
+                    const p = this.points[this.ySegmentsCount * i + j];
+                    const d = this.halfWidth - j * this.width / (this.ySegmentsCount-1);
                     p.x = link.x + d * Math.cos(a);
                     p.y = link.y + d * Math.sin(a);
                 }
@@ -332,8 +344,13 @@ const renderFrameOptimized = () => {
         m22 = -(k + tri.uv0Optimized.x * f - n + (tri.uv2Optimized.x - tri.uv1Optimized.x) * tri.p0.y) * pDenom;
         dx = (tri.uv0Optimized.x * (h - g) + tri.uv0Optimized.y * (j - m) + (a - b) * tri.p0.x) * pDenom;
         dy = (tri.uv0Optimized.x * (l - i) + tri.uv0Optimized.y * (k - n) + (a - b) * tri.p0.y) * pDenom;
+        
+        
         ctx.transform(m11, m12, m21, m22, dx, dy);
-        ctx.drawImage(mapCanvas, 0, 0, mapCanvas.width, mapCanvas.height);
+        // ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+        ctx.drawImage(mapCanvas,
+            tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height,
+            tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height);
         ctx.restore();
     });
 };
@@ -459,6 +476,7 @@ class Triangle {
     uv0Optimized;
     uv1Optimized;
     uv2Optimized;
+    fillRect;
     original;
     invisible;
     a;
@@ -470,6 +488,7 @@ class Triangle {
         this.uv1 = uv1 || new Point(1, 0);
         this.uv2 = uv2 || new Point(0, 1);
         this.original = [p0, p1, p2];
+        this.fillRect = {x:0, y:0, width:10, height:10};
     }
 }
 
