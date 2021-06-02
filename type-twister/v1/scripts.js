@@ -347,7 +347,6 @@ const renderFrameOptimized = () => {
         
         
         ctx.transform(m11, m12, m21, m22, dx, dy);
-        // ctx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
         ctx.drawImage(mapCanvas,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height);
