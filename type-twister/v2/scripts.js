@@ -343,10 +343,9 @@ const updateFrame = () => {
 const renderFrameOptimized = () => {
     ctx.clearRect(0, 0, canvas2d.width, canvas2d.height);
     rectsTester = new Array(typeTwister.segments.length);
-    const pathOffset = pathLength / typeTwister.segmentWidth;
+    const pathOffset = pathLength / typeTwister.segmentWidth * 1.2;
     typeTwister.trisToDraw.forEach(tri => {
         if (rectsTester[tri.segmentID] === undefined) {
-            // const n = Math.floor(1000 * (typeTwister.segments.length - 1 - tri.segmentID)/typeTwister.segments.length + pathOffset);
             const n = Math.floor(1000 * (typeTwister.segments.length - 1 - tri.segmentID + pathOffset)/typeTwister.segments.length * 3);
             mapCtx.fillStyle = colors[n % 1000];
             mapCtx.globalCompositeOperation = "source-atop";
