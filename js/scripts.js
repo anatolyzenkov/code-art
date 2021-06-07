@@ -92,6 +92,13 @@ class Point {
     }
 }
 
+const getRandomColor = () => {
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    return '#' + ((r << 16) + (g << 8) + (b << 0)).toString(16);
+}
+
 const colorInterpolation = (c0, c1, n) => {
     const color0 = parseInt(c0.substr(1), 16);
     const color1 = parseInt(c1.substr(1), 16);
@@ -156,6 +163,8 @@ const clamp = (n, min, max) => {
 };
 
 class MotionSimulator {
+    static PENDULUM = 'pendulum';
+    static CHAOTIC = 'chaotic';
     x = 0;
     y = 0;
     _m = 0.3;
@@ -166,7 +175,15 @@ class MotionSimulator {
     _a3 = Math.random() * PI2;
     _a4 = Math.random() * PI2;
     _a5 = Math.random() * PI2;
-    constructor() {
+    type;
+    constructor(type) {
+        this.type = type || MotionSimulator.CHAOTIC;
+        switch (this.type) {
+            case MotionSimulator.PENDULUM:
+                this._a1 = PI2;
+            default:
+                break;
+        }
         document.addEventListener('touchmove', (e) => {
             const touch = e.touches[0] || e.changedTouches[0];
             this.x = touch.pageX;
@@ -189,19 +206,37 @@ class MotionSimulator {
         }
         this.update = () => {
             if (this._automatic) {
-                const w = getViewport()[0];
-                const h = getViewport()[1];
-                this._a1 += this._m * 0.012;
-                this._a2 += this._m * 0.02;
-                this._a3 += this._m * 0.03;
-                this._a4 += this._m * 0.04;
-                this._a5 += this._m * 0.1;
-                this._a0 += this._m * 0.07 * Math.cos(this._a2) * Math.sin(this._a3);
-                let r = Math.max(w, h)/4;
-                r = r + r * 2 / 3 * Math.cos(this._a1) * Math.sin(this._a4) - r * 2 / 3 * Math.sin(this._a5);
-                this.x = w/2 + r * Math.cos(this._a0);
-                this.y = h/2 + r * Math.sin(this._a0);
+                switch (this.type) {
+                    case MotionSimulator.PENDULUM:
+                        this.updatePendulum();
+                        break;
+                    default:
+                        this.updateCHaotic();
+                }
             }
+        }
+        this.updatePendulum = () => {
+            const w = getViewport()[0];
+            const h = getViewport()[1];
+            this._a1 += this._m * 0.1 * 800 / w;
+            const cos = Math.cos(this._a1);
+            this.x = w/2 + w/2 * cos;
+            this._a2 += this._m * 0.02 * Math.abs(cos) * 800 / h;
+            this.y = h/2 + 0.9 * h/2 * Math.sin(3 * Math.PI + this._a2);
+        }
+        this.updateCHaotic = () => {
+            const w = getViewport()[0];
+            const h = getViewport()[1];
+            this._a1 += this._m * 0.012;
+            this._a2 += this._m * 0.02;
+            this._a3 += this._m * 0.03;
+            this._a4 += this._m * 0.04;
+            this._a5 += this._m * 0.1;
+            this._a0 += this._m * 0.07 * Math.cos(this._a2) * Math.sin(this._a3);
+            let r = Math.max(w, h)/4;
+            r = r + r * 2 / 3 * Math.cos(this._a1) * Math.sin(this._a4) - r * 2 / 3 * Math.sin(this._a5);
+            this.x = w/2 + r * Math.cos(this._a0);
+            this.y = h/2 + r * Math.sin(this._a0);
         }
     }
 }
