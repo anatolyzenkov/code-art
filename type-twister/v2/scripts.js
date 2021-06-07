@@ -21,7 +21,8 @@ const initScene = (fntName) => {
     if (urlParams.get('t') !== null) {
         text = urlParams.get('t');
     } else {
-        text = isMobileDevice() ? 'Burn ISO images to disc' : 'Burn ISO images to disc';
+        text = isMobileDevice() ? 'Store your data on CDs' : 'Store your data on CDs';
+        
     }
     fontName = fntName;
     // Add Stats
