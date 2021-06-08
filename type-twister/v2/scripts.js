@@ -64,7 +64,7 @@ const setupObjects = (text) => {
     // Setup text
     if (mapCanvas === undefined) mapCanvas = getCanvas(200, 200);
     mapCtx = mapCanvas.getContext('2d');
-    const fontSize = isMobileDevice() ? 120 : 190;
+    const fontSize = isMobileDevice() ? 140 : 190;
     const font = '900 ' + (fontSize * resolution) + 'px ' + fontName;
     mapCtx.font = font;
     mapCtx.textBaseline = 'top';
@@ -80,6 +80,7 @@ const setupObjects = (text) => {
     mapCtx.fillStyle = gradient;
     mapCtx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
     mapCtx.stroke();
+    // document.body.appendChild(mapCanvas);
     // Setup colors
     const colorGradient = getCanvas(colors.length, 100, 'canvas2d');
     const cgCtx = colorGradient.getContext('2d');
@@ -191,14 +192,14 @@ class TypeTwister {
             tri.uv2Optimized.x *= mapCanvas.width;
             tri.uv2Optimized.y *= mapCanvas.height;
             if (i % 2 === 0) {
-                tri.fillRect.x = tri.uv0Optimized.x - 1;
-                tri.fillRect.y = tri.uv0Optimized.y - 1;
+                tri.fillRect.x = Math.max(0, tri.uv0Optimized.x - 1);
+                tri.fillRect.y = Math.max(0, tri.uv0Optimized.y - 1);
             } else {
-                tri.fillRect.x = this.tris[i - 1].uv0Optimized.x - 1;
-                tri.fillRect.y = this.tris[i - 1].uv0Optimized.y - 1;
+                tri.fillRect.x = Math.max(0, this.tris[i-1].uv0Optimized.x - 1);
+                tri.fillRect.y = Math.max(0, this.tris[i-1].uv0Optimized.y - 1);
             }
-            tri.fillRect.width = fillRectWidth;
-            tri.fillRect.height = fillRectHeight;
+            tri.fillRect.width = mapCanvas.width - tri.fillRect.x < fillRectWidth ? mapCanvas.width - tri.fillRect.x : fillRectWidth;
+            tri.fillRect.height = mapCanvas.height - tri.fillRect.y < fillRectHeight ? mapCanvas.height - tri.fillRect.y : fillRectHeight;
         });
         this.updateGeometry = (targetX, targetY) => {
             // We do not update geometry if obect didn't moved.

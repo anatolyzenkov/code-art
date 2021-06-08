@@ -162,14 +162,14 @@ class TypeTwister {
             tri.uv2Optimized.x *= mapCanvas.width;
             tri.uv2Optimized.y *= mapCanvas.height;
             if (i % 2 === 0) {
-                tri.fillRect.x = tri.uv0Optimized.x - 1;
-                tri.fillRect.y = tri.uv0Optimized.y - 1;
+                tri.fillRect.x = Math.max(0, tri.uv0Optimized.x - 1);
+                tri.fillRect.y = Math.max(0, tri.uv0Optimized.y - 1);
             } else {
-                tri.fillRect.x = this.tris[i-1].uv0Optimized.x - 1;
-                tri.fillRect.y = this.tris[i-1].uv0Optimized.y - 1;
+                tri.fillRect.x = Math.max(0, this.tris[i-1].uv0Optimized.x - 1);
+                tri.fillRect.y = Math.max(0, this.tris[i-1].uv0Optimized.y - 1);
             }
-            tri.fillRect.width = fillRectWidth;
-            tri.fillRect.height = fillRectHeight;
+            tri.fillRect.width = mapCanvas.width - tri.fillRect.x < fillRectWidth ? mapCanvas.width - tri.fillRect.x : fillRectWidth;
+            tri.fillRect.height = mapCanvas.height - tri.fillRect.y < fillRectHeight ? mapCanvas.height - tri.fillRect.y : fillRectHeight;
         });
         this.updateGeometry = (targetX, targetY) => {
             // We do not update geometry if obect didn't moved.
@@ -298,7 +298,7 @@ const updateFrame = () => {
     targetPoint.y = motions.y * resolution;
     const geometryChanged = typeTwister.updateGeometry(targetPoint.x, targetPoint.y);
     if (geometryChanged) {
-        //renderFrame();
+        // renderFrame();
         renderFrameOptimized();
         // drawWireframe();
         // drawPoints();
@@ -347,6 +347,7 @@ const renderFrameOptimized = () => {
         
         
         ctx.transform(m11, m12, m21, m22, dx, dy);
+        // ctx.drawImage(mapCanvas, 0, 0);
         ctx.drawImage(mapCanvas,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height);
