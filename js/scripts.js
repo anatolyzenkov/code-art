@@ -218,10 +218,10 @@ class MotionSimulator {
         this.updatePendulum = () => {
             const w = getViewport()[0];
             const h = getViewport()[1];
-            this._a1 += this._m * 0.1 * 800 / w;
+            this._a1 += this._m * 0.03;
             const cos = Math.cos(this._a1);
             this.x = w/2 + w/2 * cos;
-            this._a2 += this._m * 0.02 * Math.abs(cos) * 800 / h;
+            this._a2 += this._m * 0.015 * Math.abs(cos);
             this.y = h/2 + 0.9 * h/2 * Math.sin(3 * Math.PI + this._a2);
         }
         this.updateCHaotic = () => {
