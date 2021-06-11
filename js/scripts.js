@@ -165,6 +165,8 @@ const clamp = (n, min, max) => {
 class MotionSimulator {
     static PENDULUM = 'pendulum';
     static CHAOTIC = 'chaotic';
+    static TOP_LEFT = 'top-left';
+    static CENTER = 'center';
     x = 0;
     y = 0;
     _m = 0.3;
@@ -176,7 +178,8 @@ class MotionSimulator {
     _a4 = Math.random() * PI2;
     _a5 = Math.random() * PI2;
     type;
-    constructor(type) {
+    constructor(type, origin) {
+        this.origin = origin || MotionSimulator.TOP_LEFT;
         this.type = type || MotionSimulator.CHAOTIC;
         switch (this.type) {
             case MotionSimulator.PENDULUM:
@@ -212,6 +215,10 @@ class MotionSimulator {
                         break;
                     default:
                         this.updateCHaotic();
+                }
+                if (this.origin === MotionSimulator.CENTER) {
+                    this.x -= getViewport()[0]/2;
+                    this.y -= getViewport()[1]/2;        
                 }
             }
         }
