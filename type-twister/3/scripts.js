@@ -1,6 +1,8 @@
 // Screen parameters
 const resolution = Math.min(2, getDevicePixelRatio());
-const colors = new Array(1000);
+const scale = 1/40;
+const colors = new Array();
+const colorSteps = 1000;
 let rectsTester;
 const DEBUG = isLocalHost();
 let canvas2d;
@@ -10,7 +12,8 @@ let stats;
 let motions;
 let sizeFactor
 let fontName = 'sans-serif';
-let mapCanvas;
+let colorMapCanvas;
+let alphaMapCanvas;
 let mapCtx;
 let typeTwister;
 let text;
@@ -20,13 +23,23 @@ let pathLength;
 let scene;
 let camera;
 let renderer;
-let cube;
-let geometry;
+let axesHelper;
 
 const initScene = (fntName) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('t') !== null) {
+        text = urlParams.get('t');
+    } else {
+        text = 'Store your data on CDs';
+    }
+    fontName = fntName;
     // Add Stats
     stats = new Stats();
-    motions = new MotionSimulator(MotionSimulator.PENDULUM);
+    motions = new MotionSimulator({
+        type: MotionSimulator.PENDULUM,
+        origin: MotionSimulator.CENTER,
+        speed: 2
+    });
     if (DEBUG) {
         stats.showPanel(0);
         document.body.appendChild(stats.dom);
@@ -34,12 +47,13 @@ const initScene = (fntName) => {
     // Scene
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera( 75, getViewport()[0] / getViewport()[1], 0.1, 1000 );
-    camera.position.z = 5;
+    camera.position.z = 50;
     renderer = new THREE.WebGLRenderer();
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.setSize( getViewport()[0] * resolution, getViewport()[1] * resolution );
     document.body.appendChild( renderer.domElement );
+    // Renderer screen fit
     const onResize = () => {
         renderer.setSize( getViewport()[0], getViewport()[1] );
     }
@@ -51,71 +65,64 @@ const initScene = (fntName) => {
             onResize();
         }, 300);
     });
+    // Rest
     setupObjects(text);
     updateFrame();
 }
 
 const setupObjects = (text) => {
-    cube = new TypeTwister();
-    scene.add( cube );
-    {
-        /*
-        sizeFactor = Math.max(getViewport()[0], getViewport()[1]) / 1200;
-        // Setup text
-        if (mapCanvas === undefined) mapCanvas = getCanvas(200, 200);
-        mapCtx = mapCanvas.getContext('2d');
-        const fontSize = isMobileDevice() ? 140 : 190;
-        const font = '900 ' + (fontSize * resolution) + 'px ' + fontName;
-        mapCtx.font = font;
-        mapCtx.textBaseline = 'top';
-        let textMetrics = mapCtx.measureText(text.toUpperCase());
-        mapCanvas.width = textMetrics.width;
-        mapCanvas.height = textMetrics.actualBoundingBoxDescent + textMetrics.actualBoundingBoxAscent;
-        mapCtx.font = font;
-        mapCtx.textBaseline = 'top';
-        mapCtx.beginPath();
-        const gradient = mapCtx.createLinearGradient(0, 0, mapCanvas.width, 0);
-        gradient.addColorStop(0, "#ea5041");
-        gradient.addColorStop(1, "#1c2068");
-        mapCtx.fillStyle = gradient;
-        mapCtx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
-        mapCtx.stroke();
-        // document.body.appendChild(mapCanvas);
-        // Setup colors
-        const colorGradient = getCanvas(colors.length, 100, 'canvas2d');
-        const cgCtx = colorGradient.getContext('2d');
-        const grd = cgCtx.createLinearGradient(0, 0, colorGradient.width, 0);
-        grd.addColorStop(0, '#e9a5a5');
-        grd.addColorStop(0.2, '#b8c1c0');
-        grd.addColorStop(0.4, '#65c0e0');
-        grd.addColorStop(0.6, '#aea2db');
-        grd.addColorStop(0.8, '#81c1d9');
-        grd.addColorStop(1, '#e9a5a5');
-        cgCtx.fillStyle = grd;
-        cgCtx.fillRect(0, 0, colorGradient.width, colorGradient.height);
-        const myImageData = cgCtx.getImageData(0, 0, colors.length, 100);
-        for (let i = 0; i < colors.length; i++) {
-            colors[i] = '#' + (
-                ((myImageData.data[i * 4]) << 16) +
-                ((myImageData.data[i * 4 + 1]) << 8) +
-                ((myImageData.data[i * 4 + 2]) << 0)
-                ).toString(16);
-            // colors[i] = getRandomColor();
-        }
-        // Setup geometry
-        const x = canvas2d.width;
-        const y = canvas2d.height;
-        const length = mapCanvas.width;
-        const width = mapCanvas.height;
-        const scale = sizeFactor;
-        typeTwister = new TypeTwister(x, y, length, width, scale);
-        */
+    // Setup text
+    if (alphaMapCanvas === undefined) alphaMapCanvas = getCanvas(200, 200);
+    mapCtx = alphaMapCanvas.getContext('2d');
+    const fontSize = 320;
+    const font = '900 ' + fontSize + 'px ' + fontName;
+    mapCtx.font = font;
+    mapCtx.textBaseline = 'top';
+    let textMetrics = mapCtx.measureText(text.toUpperCase());
+    alphaMapCanvas.width = textMetrics.width;
+    alphaMapCanvas.height = textMetrics.actualBoundingBoxDescent + textMetrics.actualBoundingBoxAscent;
+    mapCtx.font = font;
+    mapCtx.textBaseline = 'top';
+    mapCtx.beginPath();
+    mapCtx.fillStyle = '#FF8800';
+    mapCtx.fillText(text.toUpperCase(), 0, textMetrics.actualBoundingBoxAscent);
+    mapCtx.stroke();
+    // document.body.appendChild(alphaMapCanvas);
+    // Setup colors
+    colorMapCanvas = getCanvas(colorSteps, 100, 'canvas2d');
+    const cgCtx = colorMapCanvas.getContext('2d');
+    const grd = cgCtx.createLinearGradient(0, 0, colorMapCanvas.width, 0);
+    grd.addColorStop(0, '#e9a5a5');
+    grd.addColorStop(0.2, '#b8c1c0');
+    grd.addColorStop(0.4, '#65c0e0');
+    grd.addColorStop(0.6, '#aea2db');
+    grd.addColorStop(0.8, '#81c1d9');
+    grd.addColorStop(1, '#e9a5a5');
+    cgCtx.fillStyle = grd;
+    cgCtx.fillRect(0, 0, colorMapCanvas.width, colorMapCanvas.height);
+    const myImageData = cgCtx.getImageData(0, 0, colorSteps, 100);
+    for (let i = 0; i < colorSteps / 3; i++) {
+        colors.push(myImageData.data[i * 4]);
+        colors.push(myImageData.data[i * 4 + 1]);
+        colors.push(myImageData.data[i * 4 + 2]);
     }
+    // Setup geometry
+    const x = 0;
+    const y = 0;
+    const length = alphaMapCanvas.width/12;
+    const width = alphaMapCanvas.height/12;
+    typeTwister = new TypeTwister(x, y, length, width, alphaMapCanvas);
+    scene.add( typeTwister );
+    
+    axesHelper = new THREE.AxesHelper( 5 );
+    scene.add( axesHelper );
 }
 const getVertexShadder = () => {
     const vertexShadder = '\
+        varying vec2 vUv;\
         attribute vec3 position1;\
         void main() {\
+            vUv = uv;\
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position1, 1.0);\
         }\
     ';
@@ -124,9 +131,15 @@ const getVertexShadder = () => {
 
 const getFragmentShader = () => {
     const fragmentShader = '\
+        uniform sampler2D uAlphaTexture;\
+        uniform sampler2D uColorTexture;\
+        uniform vec2 uUVOffset;\
+        varying vec2 vUv;\
         void main()\
         {\
-            gl_FragColor = vec4 ( 1, 0, 0.5, 1 );\
+            vec4 color = texture2D(uColorTexture, vUv + uUVOffset);\
+            vec4 alpha = texture2D(uAlphaTexture, vUv);\
+            gl_FragColor = vec4(color.rgb, alpha.a);\
         }\
     ';
     return fragmentShader;
@@ -136,60 +149,13 @@ const updateFrame = () => {
     requestAnimationFrame(updateFrame);
     stats.begin();
     motions.update();
-
-    cube.updateGeometry(motions.x, motions.y);
-
-    // cube.rotation.x += 0.01;
-    // cube.rotation.y += 0.01;
+    axesHelper.position.x = motions.x * scale;
+    axesHelper.position.y = -motions.y * scale;
+    typeTwister.updateGeometry(motions.x * scale, -motions.y * scale);
     renderer.render( scene, camera );
-    // targetPoint.x = motions.x * resolution;
-    // targetPoint.y = motions.y * resolution;
-    // const geometryChanged = typeTwister.updateGeometry(targetPoint.x, targetPoint.y);
-    // if (geometryChanged) {
-    //     renderFrameOptimized();
-    // }
     stats.end();
 };
 class TypeTwister extends THREE.Mesh {
-    constructor () {
-        const material = new THREE.ShaderMaterial( {
-            vertexShader: getVertexShadder(),
-            fragmentShader: getFragmentShader()
-        } );
-        const geometry = new THREE.PlaneGeometry( 2, 1, 2, 1 );
-
-        let x, y, z, index;
-        x = y = z = index = 0;
-        const positions = new Float32Array( 6 * 3 );
-        for ( let i = 0, l = 6 * 3; i < l; i ++ ) {
-            positions[ index ++ ] = x;
-            positions[ index ++ ] = y;
-            positions[ index ++ ] = z;
-            x += ( Math.random() - 0.5 ) * 1;
-            y += ( Math.random() - 0.5 ) * 1;
-            z += ( Math.random() - 0.5 ) * 1;
-        }
-        geometry.setAttribute( 'position1', new THREE.BufferAttribute( positions, 3 ) );
-        
-        super (geometry, material);
-
-        this.updateGeometry = (px, py) => {
-            this.position.x = px/100;
-            this.position.y = py/100;
-            let x, y, z, index;
-            x = y = z = index = 0;
-            const positions = geometry.attributes.position1.array;
-            for ( let i = 0, l = 6 * 3; i < l; i ++ ) {
-                positions[ index ++ ] = Math.random();
-                positions[ index ++ ] = Math.random();
-                positions[ index ++ ] = Math.random();
-            }
-            this.geometry.attributes.position1.needsUpdate = true;
-        }
-    }
-}
-
-class TypeTwister1 {
     length;
     width;
     halfWidth;
@@ -197,101 +163,72 @@ class TypeTwister1 {
     ySegmentsCount;
     segmentWidth;
     segments;
-    points;
-    tris;
-    trisToDraw;
-    debugPoints;
     limit;
-    scale;
-    checkedTris;
-    constructor(x, y, length, width, scale) {
-        if (scale === undefined) scale = 1;
-        this.scale = scale;
-        this.length = length * scale;
-        this.width = width * scale;
-        this.halfWidth = width / 2 * scale;
-        const segmentWidth = isMobileDevice() ? 80 : 60;
-        this.xSegmentsCount = Math.floor(this.length / segmentWidth / scale);
-        this.segmentWidth = this.length/this.xSegmentsCount;
-        this.ySegmentsCount = Math.round(this.width/this.segmentWidth);
-        this.limit = this.segmentWidth / width / scale * 1.2;
-        this.segments = [];
-        this.points = [];
-        this.tris = [];
-        this.trisToDraw = [];
-        this.debugPoints = [];
-        for (let i = 0; i < this.xSegmentsCount; i++) {
-            this.segments.push(new Segment(x + i * this.segmentWidth, y));
-            for (let j = 0; j < this.ySegmentsCount; j++) {
-                this.points.push(new Point());
-            }
+    constructor (x, y, length, width) {
+        //Geometry setup
+        const uvOffset = new THREE.Vector2(0,0);
+        let segmentWidth = width / 10;
+        let xSegmentsCount = Math.floor( length / segmentWidth );
+        segmentWidth = length / xSegmentsCount;
+        let ySegmentsCount = Math.round( width / segmentWidth );
+        const segments = [];
+        const points = [];
+        for (let i = 0; i < xSegmentsCount; i++) {
+            segments.push(new Segment(x + i * segmentWidth, y));
+        };
+        
+        //Material setup
+        const alphaTexture = new THREE.CanvasTexture( alphaMapCanvas, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipmapLinearFilter );
+        alphaTexture.premultiplyAlpha = false;
+        const colorTexture = new THREE.CanvasTexture( colorMapCanvas, THREE.UVMapping, THREE.RepeatWrapping, THREE.RepeatWrapping, THREE.LinearFilter, THREE.LinearMipmapLinearFilter );
+
+        const material = new THREE.ShaderMaterial( {
+            uniforms: {
+                uColorTexture: { value: colorTexture },
+                uAlphaTexture: { value: alphaTexture },
+                uUVOffset: { type: 'v', value: uvOffset },
+            },
+            vertexShader: getVertexShadder(),
+            fragmentShader: getFragmentShader()
+        } );
+        material.transparent = true;
+
+        const geometry = new THREE.PlaneGeometry( length, width, xSegmentsCount-1, ySegmentsCount );
+        const positions = new Float32Array( (xSegmentsCount) * (ySegmentsCount + 1) * 3 );
+        for ( let i = 0; i < (xSegmentsCount) * (ySegmentsCount + 1); i ++ ) {
+            positions[ 3 * i ] = 0;//Math.random();
+            positions[ 3 * i + 1] = 0;//Math.random();
+            positions[ 3 * i + 2] = 0;
         }
-        const stepX = 1/(this.xSegmentsCount - 1);
-        const stepY = 1/(this.ySegmentsCount - 1);
-        this.segments.forEach((s,i) => {
-            if (i === this.segments.length - 1) return;
-            const offsetX = stepX * i;
-            for (let j = 0; j < this.ySegmentsCount - 1; j++) {
-                const offsetY = stepY * j;
-                const tri0 = new Triangle(
-                    this.points[i * this.ySegmentsCount + j],
-                    this.points[i * this.ySegmentsCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentsCount + j]
-                );
-                tri0.segmentID = i;
-                tri0.uv0 = new Point(offsetX, offsetY);
-                tri0.uv1 = new Point(offsetX, offsetY + stepY);
-                tri0.uv2 = new Point(offsetX + stepX, offsetY);
-                this.tris.push(tri0);
-                const tri1 = new Triangle(
-                    this.points[i * this.ySegmentsCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentsCount + j + 1],
-                    this.points[(i + 1) * this.ySegmentsCount + j],
-                );
-                tri1.segmentID = i;
-                tri1.uv0 = new Point(offsetX, offsetY + stepY);
-                tri1.uv1 = new Point(offsetX + stepX, offsetY + stepY);
-                tri1.uv2 = new Point(offsetX + stepX, offsetY);
-                this.tris.push(tri1);
-            }
-        });
-        this.checkedTris = 0;
-        const fillRectWidth = mapCanvas.width/this.segments.length + 2;
-        const fillRectHeight = mapCanvas.height/(this.ySegmentsCount - 1) + 2;
-        this.tris.forEach((tri, i) => {
-            tri.id = i;
-            tri.uv0Optimized = Point.clone(tri.uv0);
-            tri.uv0Optimized.x *= mapCanvas.width;
-            tri.uv0Optimized.y *= mapCanvas.height;
-            tri.uv1Optimized = Point.clone(tri.uv1);
-            tri.uv1Optimized.x *= mapCanvas.width;
-            tri.uv1Optimized.y *= mapCanvas.height;
-            tri.uv2Optimized = Point.clone(tri.uv2);
-            tri.uv2Optimized.x *= mapCanvas.width;
-            tri.uv2Optimized.y *= mapCanvas.height;
-            if (i % 2 === 0) {
-                tri.fillRect.x = Math.max(0, tri.uv0Optimized.x - 1);
-                tri.fillRect.y = Math.max(0, tri.uv0Optimized.y - 1);
-            } else {
-                tri.fillRect.x = Math.max(0, this.tris[i-1].uv0Optimized.x - 1);
-                tri.fillRect.y = Math.max(0, this.tris[i-1].uv0Optimized.y - 1);
-            }
-            tri.fillRect.width = mapCanvas.width - tri.fillRect.x < fillRectWidth ? mapCanvas.width - tri.fillRect.x : fillRectWidth;
-            tri.fillRect.height = mapCanvas.height - tri.fillRect.y < fillRectHeight ? mapCanvas.height - tri.fillRect.y : fillRectHeight;
-        });
+        geometry.setAttribute( 'position1', new THREE.BufferAttribute( positions, 3 ) );
+        super (geometry, material);
+        this.position.x = 0;
+        this.position.y = 0;
+        
+        this.width = width;
+        this.halfWidth = width / 2;
+        this.limit = segmentWidth / width * 1.2;
+        this.xSegmentsCount = xSegmentsCount;
+        this.segmentWidth = segmentWidth;
+        this.ySegmentsCount = ySegmentsCount;
+        this.segments = segments;
+        this.points = points;
+
         this.updateGeometry = (targetX, targetY) => {
+            // this.position.x = targetX;
+            // this.position.y = targetY;
             // We do not update geometry if obect didn't moved.
             const dx = (targetX - this.segments[0].x);
             const dy = (targetY - this.segments[0].y);
-            if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
+            // if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return false;
             // Update segments
             this.segments.forEach((link, i) => {
                 if (i === 0) {
                     const d = Math.sqrt(dx * dx + dy * dy);
-                    const max_speed = 200 * this.scale;
-                    const speed_dump = 10 * this.scale;
+                    const max_speed = 200;
+                    const speed_dump = 10;
                     
-                    const k = Math.min(max_speed, d)/d;
+                    const k = d === 0 ? 1 : Math.min(max_speed, d)/d;
                     const ta = Math.atan2(dy, dx);
                     const da = deltaAngle(link.a, ta);
                     
@@ -301,6 +238,8 @@ class TypeTwister1 {
                     pathLength += Math.sqrt(ddx * ddx + ddy * ddy);
                     link.x += ddx;
                     link.y += ddy;
+                    // this.position.x = -link.x;
+                    // this.position.y = -link.y;
                 } else {
                     const prev = this.segments[i - 1];
                     const a = Math.atan2(prev.y - link.y, prev.x - link.x);
@@ -318,12 +257,14 @@ class TypeTwister1 {
                     link.x = prev.x - this.segmentWidth * Math.cos(link.a);
                     link.y = prev.y - this.segmentWidth * Math.sin(link.a);
                 }
-                if (i < this.segments.length - 1) {
-                    this.tris[2 * i].a = link.a + Math.PI / 2;
-                    this.tris[2 * i + 1].a = link.a - Math.PI / 2;
-                }
             });
-            // Update points
+
+            const positions = geometry.attributes.position1.array;
+            // console.log(positions);
+            for (let i = 0; i < positions.length; i+=3) {
+                // console.log(i / 3,  positions[i], positions[i+1]);
+            }
+            let k;            
             this.segments.forEach((link, i) => {
                 let a;
                 if (i === 0) {
@@ -334,40 +275,28 @@ class TypeTwister1 {
                     a = this.segments[i + 1].a + deltaAngle(this.segments[i + 1].a, link.a) / 2;
                 }
                 a += Math.PI / 2;
-                for (let j = 0; j < this.ySegmentsCount; j ++) {
-                    const p = this.points[this.ySegmentsCount * i + j];
-                    const d = this.halfWidth - j * this.width / (this.ySegmentsCount-1);
-                    p.x = link.x + d * Math.cos(a);
-                    p.y = link.y + d * Math.sin(a);
+                for (let j = 0; j < this.ySegmentsCount + 1; j ++) {
+                    // const p = this.points[this.ySegmentsCount * i + j];
+                    const d = this.halfWidth - j * this.width / (this.ySegmentsCount);
+                    const index = i * this.ySegmentsCount + j;
+                    // positions[3 * index] = (link.x + d * Math.cos(a))/100;
+                    // positions[3 * index + 1] = (link.x + d * Math.sin(a))/100;
+                    // positions[3 * index + 0] = i * 0.1;
+                    // positions[3 * index + 1] = j * 0.1;
+                    // console.log(positions[3 * index + 0], positions[3 * index + 1], positions[3 * index + 2]);
+
+                    
+                    let px = link.x - d * Math.cos(a);
+                    let py = link.y - d * Math.sin(a);
+                    k = j * (this.xSegmentsCount) + i;
+                    positions[3 * k + 0] = px;
+                    positions[3 * k + 1] = py;
+                    // console.log(k, px.toFixed(1), py.toFixed(1));
                 }
             });
-            // Permanently kick out fully transparent tris
-            if (this.checkedTris < this.tris.length) {
-                for (let i = 0; i < 10; i++) {
-                    if (this.checkedTris == this.tris.length) break;
-                    testTransparency(this.tris[this.checkedTris], 1 - this.checkedTris % 2);
-                    this.checkedTris ++;
-                }
-            }
-            // Update triangles optimized
-            this.trisToDraw.length = 0;
-            this.debugPoints.length = 0;
-            this.tris.forEach((tri, i) => {
-                const p0 = tri.p0;
-                const p1 = tri.p1;
-                const p2 = tri.p2;
-                // No transparent tris
-                if (tri.invisible) return;
-                // Triangle on screen test
-                if (p0.x < 0 && p1.x < 0 && p2.x < 0) return;
-                if (p0.y < 0 && p1.y < 0 && p2.y < 0) return;
-                if (p0.x > canvas2d.width && p1.x > canvas2d.width && p2.x > canvas2d.width) return;
-                if (p0.y > canvas2d.height && p1.y > canvas2d.height && p2.y > canvas2d.height) return;
-                // Further geometry optimisation is possible…
-                // …here
-                this.trisToDraw.unshift(tri);
-            });
-            return true;
+            this.geometry.attributes.position1.needsUpdate = true;
+            uvOffset.x += 0.01;
+            this.material.uniforms.uUVOffset.value = uvOffset;
         }
     }
 }
@@ -412,7 +341,7 @@ const renderFrameOptimized = () => {
             const n = Math.floor(1000 * (typeTwister.segments.length - 1 - tri.segmentID + pathOffset)/typeTwister.segments.length * 3);
             mapCtx.fillStyle = colors[n % 1000];
             mapCtx.globalCompositeOperation = "source-atop";
-            mapCtx.fillRect(tri.fillRect.x, 0, tri.fillRect.width, mapCanvas.height);
+            mapCtx.fillRect(tri.fillRect.x, 0, tri.fillRect.width, alphaMapCanvas.height);
             rectsTester[tri.segmentID] = true;
         }
     });
@@ -452,7 +381,7 @@ const renderFrameOptimized = () => {
         dx = (tri.uv0Optimized.x * (h - g) + tri.uv0Optimized.y * (j - m) + (a - b) * tri.p0.x) * pDenom;
         dy = (tri.uv0Optimized.x * (l - i) + tri.uv0Optimized.y * (k - n) + (a - b) * tri.p0.y) * pDenom;
         ctx.transform(m11, m12, m21, m22, dx, dy);
-        ctx.drawImage(mapCanvas,
+        ctx.drawImage(alphaMapCanvas,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height,
             tri.fillRect.x, tri.fillRect.y, tri.fillRect.width, tri.fillRect.height);
         ctx.restore();
