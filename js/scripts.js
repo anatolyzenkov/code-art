@@ -178,9 +178,11 @@ class MotionSimulator {
     _a4 = Math.random() * PI2;
     _a5 = Math.random() * PI2;
     type;
-    constructor(type, origin) {
-        this.origin = origin || MotionSimulator.TOP_LEFT;
-        this.type = type || MotionSimulator.CHAOTIC;
+    constructor(params) {
+        params = params || {};
+        this.origin = params.origin || MotionSimulator.TOP_LEFT;
+        this.type = params.type || MotionSimulator.CHAOTIC;
+        this._m = 0.3 * (params.speed || 1);
         switch (this.type) {
             case MotionSimulator.PENDULUM:
                 this._a1 = PI2;
@@ -191,12 +193,14 @@ class MotionSimulator {
             const touch = e.touches[0] || e.changedTouches[0];
             this.x = touch.pageX;
             this.y = touch.pageY;
+            this.transform();
             e.preventDefault();
             manualSwitcher();
         });
         document.addEventListener('mousemove', (e) => {
             this.x = e.pageX;
             this.y = e.pageY;
+            this.transform();
             manualSwitcher();
         });
         let timeoutID = -1;
@@ -216,10 +220,13 @@ class MotionSimulator {
                     default:
                         this.updateCHaotic();
                 }
-                if (this.origin === MotionSimulator.CENTER) {
-                    this.x -= getViewport()[0]/2;
-                    this.y -= getViewport()[1]/2;        
-                }
+                this.transform();
+            }
+        }
+        this.transform = () => {
+            if (this.origin === MotionSimulator.CENTER) {
+                this.x -= getViewport()[0]/2;
+                this.y -= getViewport()[1]/2;
             }
         }
         this.updatePendulum = () => {
