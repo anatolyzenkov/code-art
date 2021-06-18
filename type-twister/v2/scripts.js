@@ -27,7 +27,9 @@ const initScene = (fntName) => {
     fontName = fntName;
     // Add Stats
     stats = new Stats();
-    motions = new MotionSimulator(MotionSimulator.PENDULUM);
+    motions = new MotionSimulator({
+        type: MotionSimulator.PENDULUM
+    });
     if (DEBUG) {
         stats.showPanel(0);
         document.body.appendChild(stats.dom);
